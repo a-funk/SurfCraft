@@ -13,8 +13,8 @@ A Fabric mod for Minecraft Java 26.3: CS:S surf ramps and CS:S surf movement. `M
 
 ## Source of truth
 Minecraft 26.3 is unobfuscated (Mojang names, no mappings). Read the real code instead of recalling older
-versions; APIs changed a lot in 1.21.x and 26.x. Decompiled sources live **outside the repo** in
-`~/minecraft-26.3-decomp/`:
+versions; APIs changed a lot in 1.21.x and 26.x. Decompiled sources live in the gitignored
+`local-content/decomp/` (keep every file inside this folder, never in `~/`):
 - `common/`, `client/`: Minecraft sources; `jar-common/`, `jar-client/`: vanilla data and asset JSON;
 - `fabric-api/<module>/`: Fabric API 0.161.0+26.3 sources; `fabric-repo/`: Fabric's test mods.
 Never copy decompiled code into this repo; describe behaviour in your own words.
@@ -24,6 +24,13 @@ Never copy decompiled code into this repo; describe behaviour in your own words.
   no Minecraft imports. `RampCell` is the shared ramp-cell geometry.
 - Other packages: blocks, registration, Minecraft integration (`src/main`), client code (`src/client`).
 - Mixins: `surfcraft.mixins.json` (common), `surfcraft.client.mixins.json` (client).
+
+## Dev log (screenshots of the work)
+The user wants screenshots at relevant moments (first render, fixes, test runs, charts of results) for a
+montage. Add each with `.tools/venv/bin/python tools/devlog.py add <png> "Title" "One-line caption"`; it lands
+in `devlog/shots/` and `devlog/index.html`. Look at a screenshot before adding it. Project-local tools live in
+`.tools/` (gitignored): `.tools/venv/bin/um` (universal-modder CLI); set `MPLCONFIGDIR=$PWD/.tools/mpl` for
+matplotlib. Keep every file inside this folder, never in `~/`.
 
 ## Rules
 - Physics fidelity is the top priority. The surf repo (`/Users/funk/code/sandbox/surf`) and its CS:S

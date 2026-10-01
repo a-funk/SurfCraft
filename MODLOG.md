@@ -23,7 +23,7 @@ their causes, and the next step. Newest entries at the bottom of each section.
   Minecraft 26.3, Fabric Loader 0.19.5, Loom 1.18.2 (`net.fabricmc.fabric-loom`, no mappings: 26.x is
   unobfuscated, Mojang names), Fabric API 0.161.0+26.3, Gradle 9.7.1, JDK 25 (Homebrew `openjdk@25`
   25.0.4.1: `JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home`), JUnit 6.1.3.
-- Source of truth, kept **outside the repo** in `~/minecraft-26.3-decomp/`:
+- Source of truth, kept in the gitignored `local-content/decomp/` (never committed; the user wants all files inside this folder, not in `~/`):
   `common/`, `client/` (decompiled Minecraft, from `./gradlew genSources`), `jar-common/`, `jar-client/`
   (vanilla data and asset JSON), `fabric-api/<module>/` (Fabric API sources for 0.161.0+26.3),
   `fabric-repo/` (Fabric API test mods at tag `0.161.0+26.3`).

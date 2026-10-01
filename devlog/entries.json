@@ -1,0 +1,32 @@
+[
+ {
+  "file": "shots/01-picking-the-ramp-angles-from-real-surf-maps.jpg",
+  "title": "Picking the ramp angles from real surf maps",
+  "caption": "Every surf face in 41 local KSF maps: 51 degrees is by far the most common, so Surf Ramp uses a 5:4 slope (51.3 degrees); Steep Surf Ramp uses 2:1 (63.4 degrees). A 1x1 45-degree wedge would be walkable ground in Source, not a surf ramp.",
+  "at": "2026-10-01 01:30"
+ },
+ {
+  "file": "shots/02-how-blocks-join-into-one-ramp.jpg",
+  "title": "How blocks join into one ramp",
+  "caption": "Each ramp block stores its cut of a shared plane, so blocks placed next to each other continue the same slope at any size. The geometry (RampCell) is tested for exact plane continuity across neighbours.",
+  "at": "2026-10-01 01:30"
+ },
+ {
+  "file": "shots/03-first-ramp-textures.jpg",
+  "title": "First ramp textures",
+  "caption": "The blocks agent drew two 16x16 textures in code (no fal key): cool teal for the 51-degree Surf Ramp, amber for the 63-degree Steep Surf Ramp, with a lit top/left edge to fit Minecraft's pixel style.",
+  "at": "2026-10-01 01:31"
+ },
+ {
+  "file": "shots/04-first-in-game-render.jpg",
+  "title": "First in-game render",
+  "caption": "The client game test builds a showcase in a superflat world: a joined 51-degree Surf Ramp (teal) backed by a 63-degree Steep Surf Ramp (amber), plus single blocks of each in all four facings. Slopes render as exact geometry, not stair steps.",
+  "at": "2026-10-01 01:38"
+ },
+ {
+  "file": "shots/05-smooth-slope-up-close-items-in-the-hotbar.jpg",
+  "title": "Smooth slope up close, items in the hotbar",
+  "caption": "Up close, the blocks join into one continuous slope with the texture lined up across cells. The hotbar shows both ramp items as wedges.",
+  "at": "2026-10-01 01:38"
+ }
+]

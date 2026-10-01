@@ -30,3 +30,6 @@ replay_*.log
 
 # agent worktrees
 .claude/worktrees/
+
+# project-local tooling (uv venv with universal-modder um + matplotlib, uv cache)
+.tools/
