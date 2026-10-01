@@ -160,5 +160,11 @@
   "title": "Ramps built side by side keep their own plane",
   "caption": "D1: a second 5:4 ramp built by hand beside the first came out as a sawtooth; placement now continues the ramp you click, then the cell's own slice, then the lower plane.",
   "at": "2026-10-01 06:46"
+ },
+ {
+  "file": "shots/28-rain-stops-on-ramps.jpg",
+  "title": "Rain stops on ramps",
+  "caption": "D2: ramps now block motion like smooth stone, so rain, snow and lightning stop on them; it used to rain under a hollow ramp roof.",
+  "at": "2026-10-01 06:46"
  }
 ]
