@@ -31,7 +31,8 @@ Never copy decompiled code into this repo; describe behaviour in your own words.
 ## Dev log (screenshots of the work)
 The user wants screenshots at relevant moments (first render, fixes, test runs, charts of results) for a
 montage. Add each with `.tools/venv/bin/python tools/devlog.py add <png> "Title" "One-line caption"`; it lands
-in `devlog/shots/` and `devlog/index.html`. Look at a screenshot before adding it. Project-local tools live in
+in `devlog/shots/` and `devlog/index.html` (published at https://devlog-production-6292.up.railway.app by the
+orchestrator with `tools/devlog.py deploy`). Look at a screenshot before adding it. Project-local tools live in
 `.tools/` (gitignored): `.tools/venv/bin/um` (universal-modder CLI); set `MPLCONFIGDIR=$PWD/.tools/mpl` for
 matplotlib. Keep every file inside this folder, never in `~/`.
 

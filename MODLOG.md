@@ -77,3 +77,46 @@ with it and fall damage that ignores ramp contact.
   do not judder.
 - **Server:** no movement code; the collide hook makes its re-simulated move agree with the client, and
   fall distance resets on ramp contact.
+
+## Wave A results (2026-10-01)
+### Physics core (`dev.afunk.surfcraft.physics`)
+- Java port of the surf repo's cssMovement path + BSP hull trace, in Source units. Replays against the real CS:S
+  server: 14 flat recordings (worst 0.000183 u, 0.000046 u/s, stamina exact, grounded exact every tick) and
+  4 surf_kitsune ramp recordings (worst 0.006348 u, 0.000671 u/s; 53 and 79 surf-contact ticks). 17 recordings
+  that duck are skipped (duck is not ported); route recordings need triggers/teleports.
+- Kitsune wall recordings pass only with `func_brush *57` modelled as its compiled VPhysics hull (its raw planes
+  shrunk 0.5 u on every face, checked to 1e-5 against the BSP physics lump; not general: 14 of 58 func_brush
+  brushes compile differently). Next step: export compiled hulls in `tools/extract-kitsune-brushes.mjs`.
+- **Seam rampbug (the main finding).** One brush per ramp cell rampbugs exactly like CS:S multi-brush ramps:
+  Source's box trace has a ~1/32-unit dead zone at seams the hull's contact edge crosses (the cell being left
+  counts the hull gone, the cell being entered reports an internal axial face; a later brush with a negative raw
+  entry fraction overrides an earlier hit clamped to 0; full cells touching the slope at a corner report axial
+  faces). 41-59 of 300 random runs per slope left the one-brush path. **Fix:** `RampBrushes.of(cells)` merges
+  identical cells along the length into prisms, adds one 1/8-unit seamless slab per run of cut cells (listed
+  last) and bevels corner-touching full cells with the slope plane: 0/300 diverge, bit-identical to one brush.
+  Integration rule: block boxes first, `RampBrushes` last and in order. Non-ramp solid blocks touching a slope
+  at a corner (stone used as ramp support) still need the slope plane as a bevel.
+- Strafing hard into a level surf ramp climbs (+12.8 u/s on 51°, +6.1 on 63°) to the apex: real CS:S behaviour.
+- Float origins: run physics in a rebased local frame (|coords| < ~16384 u). Trace cost ~0.1-0.4 µs; 1-2 µs/tick.
+### Blocks, rendering, data (`dev.afunk.surfcraft.block`, `client.RampModels`)
+- `SurfRampBlock(p, q)`: `surf_ramp` 5:4 and `steep_surf_ramp` 2:1, state `facing` + `cut` (1..p+q). The cut
+  range must exist before `super()`: JDK 25 flexible constructor bodies.
+- Joining: the 26-neighbour rule mis-cut ~80% of random build orders (full cells store p+q and lose the plane);
+  the shipped rule searches breadth-first through the same-type/facing ramp (<= 8 blocks) for the nearest partial
+  cell: 0/1000 wrong.
+- Exact-geometry rendering: `ModelLoadingPlugin.registerBlockStateResolver` + `MeshQuadCollection` per state (no
+  blockstate JSON); items via an `UnbakedModelDeserializer` (`"fabric:type": "surfcraft:ramp"`). UV lock gives
+  world-aligned textures; vertices snapped to the 1/(p*q) grid so neighbours meet exactly.
+- Recipes: 6 smooth stone (stairs pattern) -> 6 Surf Ramp; 4 (steep L) -> 4 Steep Surf Ramp; stonecutting 1 -> 1.
+- Tests: `./gradlew build` runs JUnit (37) and the server game tests (7); `./gradlew runClientGameTest` opens a
+  client, builds a showcase and writes screenshots to `build/gametest/screenshots/`.
+- Gotcha: game tests run millions of blocks out (x ~5.3e6), where world-space plane constants carry ~1e-9 of
+  double rounding: compare relatively, and compute physics in a local frame.
+### Movement research
+- `docs/dev/mc26-movement.md`: the 26.3 pipeline, server checks (moved wrongly = 0.25 blocks *horizontal*
+  re-simulation error, y ignored; creative exempt; moved too quickly 100 sq. blocks per packet, singleplayer
+  owner exempt), and the mixin plan (applyInput TAIL, Player.travel HEAD, Entity.collide HEAD, checkFallDamage).
+### Dev log
+- `devlog/` (screenshots + `index.html`), published with `tools/devlog.py deploy` to Railway project
+  `surfcraft-devlog`: https://devlog-production-6292.up.railway.app
+- Homebrew's python3 is broken on this Mac (pyexpat symbol mismatch; uv refuses it): use `.tools/venv/bin/python`.
