@@ -172,5 +172,11 @@
   "title": "Ramps cast shadows",
   "caption": "D5: occlusion shapes instead of noOcclusion: the hollow ramp (right) now shades the ground like the solid one, and hidden faces are culled.",
   "at": "2026-10-01 06:46"
+ },
+ {
+  "file": "shots/30-ramp-fields-render-as-fast-as-stone.jpg",
+  "title": "Ramp fields render as fast as stone",
+  "caption": "D5: frame rate over six 16-tall A-frames as a share of the same field in stone: 81% before, 100% after (one dot per client run).",
+  "at": "2026-10-01 06:47"
  }
 ]
