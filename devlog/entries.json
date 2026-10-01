@@ -64,5 +64,11 @@
   "title": "Getting the sprite to read as a karambit",
   "caption": "Before and after: the first tries drew a flat arc with a 1-pixel ring. The final sprite has a hooked claw blade with a dark outline (like vanilla swords) and a ring with a clear hole.",
   "at": "2026-10-01 03:00"
+ },
+ {
+  "file": "shots/12-copy-a-ramp-chunk-extend-it-three-times.jpg",
+  "title": "Copy a ramp chunk, extend it three times",
+  "caption": "Sneak + right-click copies a hand-built 63-degree chunk (6x6x4, 96 blocks) onto the knife. Three right-clicks on the ramp put a copy after its end each time: 16 blocks long, every cell on the same slope plane.",
+  "at": "2026-10-01 03:00"
  }
 ]
