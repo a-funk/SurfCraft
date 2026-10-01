@@ -112,5 +112,11 @@
   "title": "Minecraft adds nothing to the physics",
   "caption": "Speed every tick of two in-game surf runs (blue) against an offline replay of the same keys and mouse through the physics core alone (orange, dashed). Positions agree exactly, bit for bit: the Minecraft pipeline changes nothing about the CS:S movement.",
   "at": "2026-10-01 03:43"
+ },
+ {
+  "file": "shots/20-bug-fixed-sinking-through-a-ramp.jpg",
+  "title": "Bug fixed: sinking through a ramp",
+  "caption": "Found by the in-game test: a creative player flying into a slope could sink through it a hair per tick, because the exact collision stopped boxes a rounding tolerance inside. Now boxes stop where they touch: 3000 presses into the slope, zero penetration.",
+  "at": "2026-10-01 03:45"
  }
 ]
