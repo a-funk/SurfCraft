@@ -178,5 +178,11 @@
   "title": "Ramp fields render as fast as stone",
   "caption": "D5: frame rate over six 16-tall A-frames as a share of the same field in stone: 81% before, 100% after (one dot per client run).",
   "at": "2026-10-01 06:47"
+ },
+ {
+  "file": "shots/31-the-selection-outline-is-the-real-wedge.jpg",
+  "title": "The selection outline is the real wedge",
+  "caption": "D9: the outline on a ramp traces the cell's exact edges instead of the 8-step staircase that collision uses.",
+  "at": "2026-10-01 06:47"
  }
 ]
