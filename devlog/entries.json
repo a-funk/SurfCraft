@@ -130,5 +130,11 @@
   "title": "Fixed: the ground at a ramp's toe",
   "caption": "CS:S also probes each quarter of the player's box for floor; without it, a surfer at a ramp's foot stayed airborne and kept speed (2:1 toe: 1101 vs 463 u/s).",
   "at": "2026-10-01 06:05"
+ },
+ {
+  "file": "shots/23-fixed-bunny-hopping-dodged-fall-damage.jpg",
+  "title": "Fixed: bunny hopping dodged fall damage",
+  "caption": "Auto hop landed and jumped within one tick 7 times in 10, so the server never saw the landing. Now that tick reports the touchdown: 221 of 221 drops hurt as without jump.",
+  "at": "2026-10-01 06:05"
  }
 ]
