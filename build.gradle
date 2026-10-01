@@ -32,6 +32,11 @@ loom.runs.named("gameTest") {
 	vmArg "-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('gametest/server-tests.xml').get().asFile}"
 }
 
+loom.runs.named("clientGameTest") {
+	// Loom clears the client run directory before launches, so screenshots go next to the server report.
+	vmArg "-Dsurfcraft.screenshots=${layout.buildDirectory.dir('gametest/screenshots').get().asFile}"
+}
+
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"

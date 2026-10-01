@@ -3,11 +3,13 @@ package dev.afunk.surfcraft.gametest;
 import dev.afunk.surfcraft.block.SurfBlocks;
 import dev.afunk.surfcraft.block.SurfRampBlock;
 import dev.afunk.surfcraft.gametest.TestRamp.Cell;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -20,12 +22,15 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * Builds a showcase in a superflat world at noon and takes 1280x720 screenshots into
- * build/run/clientGameTest/screenshots: a 5:4 ramp (4 columns, 5 rows, 8 long) facing west back to back with a 2:1
+ * build/gametest/screenshots: a 5:4 ramp (4 columns, 5 rows, 8 long) facing west back to back with a 2:1
  * ramp (3 columns, 6 rows, 8 long) facing east, both placed cell by cell with the joining rule, and two rows of single
  * blocks (5:4 at z = 13, 2:1 at z = 16) facing north, east, south and west from low x to high x. Both items sit in the
  * hotbar; the last shot holds the 5:4 ramp.
  */
 public class RampShowcaseClientTest implements FabricClientGameTest {
+	/** Set by build.gradle (build/gametest/screenshots); defaults to the game directory's screenshots folder. */
+	private static final Path SCREENSHOTS = Path.of(System.getProperty("surfcraft.screenshots", "screenshots"));
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		context.getInput().resizeWindow(1280, 720);
@@ -84,6 +89,6 @@ public class RampShowcaseClientTest implements FabricClientGameTest {
 		world.getConnection().waitForClientboundPackets();
 		context.waitTicks(3);
 		world.getConnection().waitForChunksRender();
-		context.takeScreenshot(name);
+		context.takeScreenshot(TestScreenshotOptions.of(name).withDestinationDir(SCREENSHOTS));
 	}
 }
