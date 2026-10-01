@@ -1,8 +1,8 @@
 # SurfCraft
 
 Counter-Strike: Source surf in Minecraft 26.3 (Fabric). Craft surf ramps, build them to any size, and surf them
-with CS:S's own movement: air strafing, ramp clipping, auto bunny hop, ported from the engine and checked
-against recordings from a real CS:S server.
+with CS:S movement: air strafing, ramp clipping, auto bunny hop, reimplemented and checked against recordings
+from a real CS:S server.
 
 Live dev log (screenshots of the build, step by step): https://devlog-production-6292.up.railway.app
 
@@ -62,6 +62,11 @@ profile (its files stay in `run/`).
   rubber-banding. Tested in survival in single player and on a dedicated server at up to 2200 units/s.
 - `./gradlew build` runs the JUnit and server game tests; `./gradlew runClientGameTest` runs the in-game tests
   (they open a window). Details, decisions and gotchas: `MODLOG.md`, `docs/dev/`, `AGENTS.md`.
+
+## Licensing
+All rights reserved for now. The movement code follows the Source SDK's movement structure (via the author's
+browser surf project) and was checked against a CS:S server; like that project, public release of the code is gated
+on a provenance review. See `THIRD_PARTY_NOTICES.md` and `LICENSES/`.
 
 ## Credits
 Built with Claude Code (Claude Opus 5.5) using the [universal-modder](https://github.com/rehan-remade/universal-modder)

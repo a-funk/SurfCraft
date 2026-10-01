@@ -3,11 +3,14 @@
 	"id": "surfcraft",
 	"version": "${version}",
 	"name": "SurfCraft",
-	"description": "Counter-Strike: Source surf ramps for Minecraft: craftable ramp blocks that join into ramps of any size, and CS:S air-strafe and ramp-clip movement ported from the engine.",
+	"description": "Counter-Strike: Source surf for Minecraft: craftable surf ramps that join into ramps of any size, a Karambit that copies and places ramp modules, and CS:S surf movement reimplemented and checked against recordings of a CS:S server.",
 	"authors": [
 		"Alex Funk"
 	],
 	"license": "All-Rights-Reserved",
+	"contact": {
+		"homepage": "https://devlog-production-6292.up.railway.app"
+	},
 	"icon": "assets/surfcraft/icon.png",
 	"environment": "*",
 	"entrypoints": {
@@ -29,6 +32,6 @@
 		"fabricloader": ">=0.19.5",
 		"minecraft": "~26.3",
 		"java": ">=25",
-		"fabric-api": "*"
+		"fabric-api": ">=0.161.0"
 	}
 }

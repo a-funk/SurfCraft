@@ -69,4 +69,13 @@ java {
 
 test {
 	useJUnitPlatform()
+	// The Kitsune replays read the user's own map geometry from the gitignored local-content/ and skip without it:
+	// declare it, so extracting or re-extracting it reruns them instead of reusing a skipped result.
+	inputs.files(fileTree("local-content/css-reference")).withPropertyName("kitsuneGeometry").optional()
+}
+
+jar {
+	// Provenance notices and the license texts they refer to travel with the mod.
+	from("THIRD_PARTY_NOTICES.md") { into "META-INF" }
+	from("LICENSES") { into "META-INF/licenses" }
 }
