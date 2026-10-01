@@ -88,5 +88,11 @@
   "title": "All or nothing",
   "caption": "Clicking where it doesn't fit places nothing: the action bar gives the reason and red dust marks the 44 cells in the way. In survival the knife also takes one item per block, or lists what's missing; sneak + right-click in the air undoes.",
   "at": "2026-10-01 03:00"
+ },
+ {
+  "file": "shots/16-the-knife-remembers-its-module.jpg",
+  "title": "The knife remembers its module",
+  "caption": "The copied module is stored on the item (palette plus run-length encoded blocks), so it survives restarts; the tooltip shows its size and the controls.",
+  "at": "2026-10-01 03:00"
  }
 ]
