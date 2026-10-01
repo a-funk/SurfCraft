@@ -166,5 +166,11 @@
   "title": "Rain stops on ramps",
   "caption": "D2: ramps now block motion like smooth stone, so rain, snow and lightning stop on them; it used to rain under a hollow ramp roof.",
   "at": "2026-10-01 06:46"
+ },
+ {
+  "file": "shots/29-ramps-cast-shadows.jpg",
+  "title": "Ramps cast shadows",
+  "caption": "D5: occlusion shapes instead of noOcclusion: the hollow ramp (right) now shades the ground like the solid one, and hidden faces are culled.",
+  "at": "2026-10-01 06:46"
  }
 ]
