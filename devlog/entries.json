@@ -184,5 +184,11 @@
   "title": "The selection outline is the real wedge",
   "caption": "D9: the outline on a ramp traces the cell's exact edges instead of the 8-step staircase that collision uses.",
   "at": "2026-10-01 06:47"
+ },
+ {
+  "file": "shots/32-a-208-block-surf-ramp-from-25-karambit-clicks.jpg",
+  "title": "A 208-block surf ramp from 25 Karambit clicks",
+  "caption": "D4: extend reads only the ramp's end slice, so a copied 16-tall 5:4 A-frame grows to 208 blocks through real clicks (it used to stop at 40).",
+  "at": "2026-10-01 06:47"
  }
 ]
