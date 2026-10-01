@@ -8,8 +8,10 @@ import dev.afunk.surfcraft.karambit.ModulePlacer;
 import dev.afunk.surfcraft.karambit.SurfModule;
 import dev.afunk.surfcraft.physics.RampCell;
 import io.netty.buffer.Unpooled;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -33,17 +35,16 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /** The Karambit through its item: copy, extend, free placement, all-or-nothing, survival costs, undo, data. */
 public class KarambitGameTests {
-	private static final String AREA = "surfcraft-gametest:karambit_area";
+	private static final String AREA = "surfcraft-gametest:karambit_area", LONG_AREA = "surfcraft-gametest:long_area";
 	private static final SurfRampBlock RAMP = SurfBlocks.SURF_RAMP;
 	private static final BlockState FULL_EAST = RAMP.defaultBlockState().setValue(SurfRampBlock.FACING, Direction.EAST).setValue(RAMP.cut, RAMP.p + RAMP.q);
 	private static final BlockState STONE = Blocks.STONE.defaultBlockState();
-	/** Bottom up, front to back: an order the joining rule builds exactly (as in the ramp showcase). */
-	private static final Comparator<TestRamp.Cell> BOTTOM_UP = Comparator.comparingInt(TestRamp.Cell::y).thenComparingInt(c -> -c.u()).thenComparingInt(TestRamp.Cell::w);
 
 	/** A mock player in {@code mode} looking {@code look}, holding a fresh Karambit (the default module). */
 	private static Player player(GameTestHelper helper, GameType mode, Direction look) {
@@ -77,7 +78,7 @@ public class KarambitGameTests {
 		BlockPos origin = helper.absolutePos(new BlockPos(4, 1, 8));
 		// Facing east, 3 columns, 4 rows, 3 long; a stone above the slope and a chest (not copied) in its box.
 		TestRamp ramp = new TestRamp(RAMP, Direction.EAST, origin, 3, 4, 3, 2, 0);
-		String built = ramp.place(level, ramp.sorted(BOTTOM_UP));
+		String built = ramp.place(level, ramp.sorted(TestRamp.BOTTOM_UP));
 		helper.assertTrue(built == null, "hand-built ramp: " + built);
 		BlockPos stone = origin.offset(2, 3, 1), chest = origin.offset(2, 2, 0);
 		level.setBlockAndUpdate(stone, STONE);
@@ -206,7 +207,7 @@ public class KarambitGameTests {
 		ServerLevel level = helper.getLevel();
 		BlockPos gentle = helper.absolutePos(new BlockPos(2, 1, 4)), steep = helper.absolutePos(new BlockPos(12, 1, 4));
 		TestRamp a = new TestRamp(RAMP, Direction.EAST, gentle, 3, 4, 3, 2, 0), b = new TestRamp(SurfBlocks.STEEP_SURF_RAMP, Direction.EAST, steep, 3, 4, 3, 2, 0);
-		String built = a.place(level, a.sorted(BOTTOM_UP)), builtSteep = b.place(level, b.sorted(BOTTOM_UP));
+		String built = a.place(level, a.sorted(TestRamp.BOTTOM_UP)), builtSteep = b.place(level, b.sorted(TestRamp.BOTTOM_UP));
 		helper.assertTrue(built == null && builtSteep == null, "hand-built ramps: " + built + ", " + builtSteep);
 		Player player = player(helper, GameType.CREATIVE, Direction.SOUTH);
 		click(player, gentle, Direction.UP, true);
@@ -275,6 +276,109 @@ public class KarambitGameTests {
 	/** n·corner - d for corner c (bits x, y, z) of the cell at {@code at}. */
 	private static double value(double[] plane, BlockPos at, int c) {
 		return plane[0] * (at.getX() + (c & 1)) + plane[1] * (at.getY() + (c >> 1 & 1)) + plane[2] * (at.getZ() + (c >> 2 & 1)) - plane[3];
+	}
+
+	/**
+	 * The extend preview (plan() on a ramp, run every client tick while the knife points at one) costs about the same on a
+	 * 16-tall 5:4 A-frame 8 and 200 blocks long: it reads the ramp's end slice, not the whole ramp.
+	 */
+	@GameTest(structure = LONG_AREA, maxTicks = 400)
+	public void extendPlanCostIsFlatInRampLength(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		Player player = player(helper, GameType.CREATIVE, Direction.SOUTH);
+		BlockPos o = helper.absolutePos(new BlockPos(20, 1, 0)), clicked = o.offset(3, 0, 2);
+		Map<Integer, Double> ms = new TreeMap<>();
+		for (int length : new int[] {8, 16, 32, 48, 96, 200}) {
+			new AFrame(RAMP, o.getX(), o.getY(), o.getZ(), 16, length, false).build(level);
+			for (int i = 0; i < 20; i++) ModulePlacer.plan(level, player, player.getMainHandItem(), clicked, Direction.UP);
+			double best = Double.MAX_VALUE;
+			for (int batch = 0; batch < 5; batch++) {
+				long t0 = System.nanoTime();
+				for (int i = 0; i < 20; i++) ModulePlacer.plan(level, player, player.getMainHandItem(), clicked, Direction.UP);
+				best = Math.min(best, (System.nanoTime() - t0) / 1e6 / 20);
+			}
+			ms.put(length, best);
+		}
+		System.out.println("SURFCRAFT extend plan() ms by 16-tall A-frame length: " + ms);
+		helper.assertTrue(ms.get(200) < 2 * ms.get(8) + 0.2, "plan() cost grows with the ramp's length: " + ms);
+		helper.succeed();
+	}
+
+	/** Copy a 16-tall 5:4 A-frame 8 long and extend it 25 times: a 208-long surf ramp, every slice like the first. */
+	@GameTest(structure = LONG_AREA, maxTicks = 400)
+	public void extendGrowsASurfSizedRamp(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos o = helper.absolutePos(new BlockPos(20, 1, 0)), clicked = o.offset(3, 0, 2);
+		new AFrame(RAMP, o.getX(), o.getY(), o.getZ(), 16, 8, false).build(level);
+		Player player = player(helper, GameType.CREATIVE, Direction.SOUTH);
+		click(player, clicked, Direction.UP, true);
+		SurfModule module = player.getMainHandItem().get(KarambitItem.MODULE);
+		helper.assertTrue(module != null && module.width() == 26 && module.height() == 16 && module.length() == 8, "copied " + module);
+		for (int i = 1; i <= 25; i++) {
+			ModulePlacer.Result result = ModulePlacer.place(level, player, player.getMainHandItem(), clicked, Direction.UP);
+			helper.assertTrue(result.ok(), "extension " + i + ": " + result.message().getString());
+		}
+		for (BlockPos pos : BlockPos.betweenClosed(o.offset(-14, 0, 0), o.offset(13, 16, 208))) {
+			BlockState want = pos.getZ() - o.getZ() < 208 ? level.getBlockState(new BlockPos(pos.getX(), pos.getY(), o.getZ())) : Blocks.AIR.defaultBlockState();
+			if (level.getBlockState(pos) != want) helper.fail("cell " + pos.subtract(o) + " is " + level.getBlockState(pos) + ", want " + want);
+		}
+		helper.succeed();
+	}
+
+	/** A ramp wider than the knife holds is refused with its size, and the knife keeps what it had. */
+	@GameTest(structure = LONG_AREA)
+	public void copyRefusesARampWiderThanTheKnife(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos o = helper.absolutePos(new BlockPos(20, 1, 2));
+		new AFrame(RAMP, o.getX(), o.getY(), o.getZ(), 21, 4, false).build(level);
+		Player player = player(helper, GameType.CREATIVE, Direction.SOUTH);
+		ModulePlacer.Result result = ModulePlacer.copy(level, player, player.getMainHandItem(), o.offset(3, 0, 1));
+		helper.assertTrue(!result.ok() && result.message().getContents() instanceof TranslatableContents t && t.getKey().equals("surfcraft.karambit.too_wide")
+				&& Arrays.equals(t.getArgs(), new Object[] {34, SurfModule.MAX_SIZE}), "copy of a 34-wide ramp: " + result.message().getString());
+		helper.assertTrue(!player.getMainHandItem().has(KarambitItem.MODULE), "the knife keeps its default module");
+		helper.succeed();
+	}
+
+	/**
+	 * Adventure mode builds and undoes nothing with the knife: plan() (the preview) refuses with the reason, and a sneak +
+	 * right-click on a ramp, which the client turns into use() (ItemStack.useOn passes without building), undoes nothing.
+	 */
+	@GameTest(structure = AREA)
+	public void adventureModeNeitherBuildsNorUndoes(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		Player player = player(helper, GameType.CREATIVE, Direction.SOUTH);
+		BlockPos ground = helper.absolutePos(new BlockPos(12, 0, 2)), min = helper.absolutePos(new BlockPos(9, 1, 2));
+		level.setBlockAndUpdate(ground, STONE);
+		click(player, ground, Direction.UP, false);
+		long placed = BlockPos.betweenClosedStream(min, min.offset(7, 4, 7)).filter(p -> !level.getBlockState(p).isAir()).count();
+		helper.assertValueEqual(placed, (long) SurfModule.DEFAULT.blocks(), "placed in creative");
+		GameType.ADVENTURE.updatePlayerAbilities(player.getAbilities());
+		ModulePlacer.Plan plan = ModulePlacer.plan(level, player, player.getMainHandItem(), ground, Direction.UP);
+		helper.assertTrue(!plan.ok() && key(plan.problem()).equals("surfcraft.karambit.may_not_build"), "adventure plan: " + plan.problem());
+		click(player, min.offset(3, 0, 3), Direction.UP, true);
+		player.setShiftKeyDown(true);
+		player.getMainHandItem().use(level, player, InteractionHand.MAIN_HAND);
+		player.setShiftKeyDown(false);
+		helper.assertValueEqual(BlockPos.betweenClosedStream(min, min.offset(7, 4, 7)).filter(p -> !level.getBlockState(p).isAir()).count(), placed, "blocks after an adventure sneak-click");
+		helper.succeed();
+	}
+
+	/** A module that would land on the player says so ("You are in the way"); one that hits a block still says "No room". */
+	@GameTest(structure = AREA)
+	public void refusalsNameTheirCause(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		for (int x = 4; x < 20; x++) for (int y = 1; y < 9; y++) helper.setBlock(new BlockPos(x, y, 6), Blocks.STONE);
+		Player player = player(helper, GameType.CREATIVE, Direction.NORTH);
+		BlockPos wall = helper.absolutePos(new BlockPos(12, 2, 6));
+		player.setPos(wall.getX() + 0.5, wall.getY() - 1, wall.getZ() + 3.5);
+		ModulePlacer.Plan plan = ModulePlacer.plan(level, player, player.getMainHandItem(), wall, Direction.SOUTH);
+		helper.assertTrue(!plan.ok() && key(plan.problem()).equals("surfcraft.karambit.in_the_way") && plan.blocked().stream().allMatch(p -> new AABB(p).intersects(player.getBoundingBox())),
+				"a module through the player: " + plan.problem() + " " + plan.blocked());
+		player.setPos(wall.getX() + 0.5, wall.getY() - 1, wall.getZ() + 12.5);
+		helper.assertTrue(ModulePlacer.plan(level, player, player.getMainHandItem(), wall, Direction.SOUTH).ok(), "the same module with the player back");
+		level.setBlockAndUpdate(wall.south(3), STONE);
+		helper.assertValueEqual(key(ModulePlacer.plan(level, player, player.getMainHandItem(), wall, Direction.SOUTH).problem()), "surfcraft.karambit.blocked", "a stone in the way");
+		helper.succeed();
 	}
 
 	/** Two iron ingots and a stick on the diagonal make one Karambit; the recipe has its recipe-book advancement. */

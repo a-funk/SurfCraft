@@ -33,7 +33,7 @@ public final class SurfBlocks {
 	private static SurfRampBlock ramp(String name, int p, int q) {
 		ResourceKey<Block> key = ResourceKey.create(Registries.BLOCK, SurfCraft.id(name));
 		SurfRampBlock block = Registry.register(BuiltInRegistries.BLOCK, key,
-				new SurfRampBlock(p, q, BlockBehaviour.Properties.ofFullCopy(Blocks.SMOOTH_STONE).noOcclusion().setId(key)));
+				new SurfRampBlock(p, q, BlockBehaviour.Properties.ofFullCopy(Blocks.SMOOTH_STONE).setId(key)));
 		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, key.identifier());
 		Registry.register(BuiltInRegistries.ITEM, itemKey, new BlockItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
 		return block;

@@ -69,8 +69,16 @@ public final class KarambitItem extends Item {
 		return result.ok() ? InteractionResult.SUCCESS_SERVER : InteractionResult.FAIL;
 	}
 
+	/**
+	 * Sneak + use in the air undoes. Without build rights (adventure mode) every click lands here, as ItemStack.useOn
+	 * passes without calling {@link #useOn}: it says why nothing happens and undoes nothing.
+	 */
 	@Override
 	public InteractionResult use(Level level, Player player, InteractionHand hand) {
+		if (!player.mayBuild()) {
+			if (level instanceof ServerLevel server) feedback(server, player, ModulePlacer.Result.fail("surfcraft.karambit.may_not_build"));
+			return InteractionResult.FAIL;
+		}
 		if (!player.isSecondaryUseActive()) return InteractionResult.PASS;
 		if (level instanceof ServerLevel server) feedback(server, player, ModulePlacer.undo(server, player));
 		return InteractionResult.SUCCESS;

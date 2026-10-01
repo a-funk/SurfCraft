@@ -49,7 +49,8 @@ public record SurfModule(int width, int height, int length, List<BlockState> pal
 		return new SurfModule(width, height, length, List.copyOf(palette), List.copyOf(runs));
 	}
 
-	public int index(int x, int y, int z) {
+	/** Where cell (x, y, z) of a {@code width x ... x length} module is in {@link #cells}: z fastest, then x, then y. */
+	public static int index(int width, int length, int x, int y, int z) {
 		return (y * width + x) * length + z;
 	}
 
@@ -94,7 +95,7 @@ public record SurfModule(int width, int height, int length, List<BlockState> pal
 				int cut = RampCell.continueCut(p, q, p, SurfRampBlock.cellU(facing, outer), 0, SurfRampBlock.cellU(facing, new BlockPos(x, y, 0)), y);
 				BlockState state = cut < 1 ? Blocks.AIR.defaultBlockState()
 						: ramp.defaultBlockState().setValue(SurfRampBlock.FACING, facing).setValue(ramp.cut, Math.min(cut, p + q));
-				for (int z = 0; z < length; z++) cells[(y * width + x) * length + z] = state;
+				for (int z = 0; z < length; z++) cells[index(width, length, x, y, z)] = state;
 			}
 		}
 		return of(width, height, length, cells);
