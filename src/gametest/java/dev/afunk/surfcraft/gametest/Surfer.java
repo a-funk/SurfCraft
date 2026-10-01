@@ -99,6 +99,11 @@ final class Surfer {
 
 	Sample tick() {
 		context.waitTick();
+		return observe();
+	}
+
+	/** {@link #tick}'s checks for a tick something else ran (a frame capture that ticks itself). */
+	Sample observe() {
 		Sample s = sample();
 		List<Vec3> recent = context.computeOnClient(c -> List.copyOf(HISTORY));
 		// The server's copy lags by a tick or two but must be exactly one of the client's positions.

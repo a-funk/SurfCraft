@@ -15,7 +15,8 @@
 			"dev.afunk.surfcraft.gametest.RampShowcaseClientTest",
 			"dev.afunk.surfcraft.gametest.KarambitClientTest",
 			"dev.afunk.surfcraft.gametest.SurfClientTest",
-			"dev.afunk.surfcraft.gametest.SurfServerClientTest"
+			"dev.afunk.surfcraft.gametest.SurfServerClientTest",
+			"dev.afunk.surfcraft.gametest.PlaythroughClientTest"
 		]
 	},
 	"mixins": [
