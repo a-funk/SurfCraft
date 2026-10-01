@@ -32,7 +32,7 @@ const bounds = brush => {
 const out = join(import.meta.dirname, '../local-content/css-reference');
 mkdirSync(out, { recursive: true });
 for (const [name, region] of Object.entries(regions)) {
-  const brushes = [], warnings = [];
+  const brushes = [], warnings = [], entityBrushes = [];
   for (const index of bsp.models[0].brushes) {
     const brush = bsp.brushes[index];
     const solid = brush.contents & (SourceContents.Solid | SourceContents.Window | SourceContents.Grate | SourceContents.Moveable);
@@ -54,9 +54,16 @@ for (const [name, region] of Object.entries(regions)) {
     if (!model?.startsWith('*')) continue;
     const m = bsp.models[Number(model.slice(1))], origin = (get('origin') ?? '0 0 0').split(/\s+/).map(Number);
     const min = [m.min.x + origin[0], m.min.y + origin[1], m.min.z + origin[2]], max = [m.max.x + origin[0], m.max.y + origin[1], m.max.z + origin[2]];
-    if (overlaps(min, max, region.min, region.max)) warnings.push(`${cls} ${model} intersects the region`);
+    if (!overlaps(min, max, region.min, region.max)) continue;
+    warnings.push(`${cls} ${model} intersects the region`);
+    // Raw brush planes, moved to the entity origin. A func_brush with solidbsp=0 really collides through its
+    // compiled VPhysics hull, which can differ from these planes by about half a unit.
+    if (cls === 'func_brush') entityBrushes.push({ classname: cls, model, solidbsp: get('solidbsp'), brushes: m.brushes.map(index => ({ index,
+      contents: bsp.brushes[index].contents, planes: bsp.brushes[index].sides.map(s => {
+        const p = bsp.planes[s.plane]; return [p.normal.x, p.normal.y, p.normal.z, p.distance + p.normal.x * origin[0] + p.normal.y * origin[1] + p.normal.z * origin[2]];
+      }) })) });
   }
   for (const p of bsp.staticProps) if (overlaps([p.origin.x, p.origin.y, p.origin.z], [p.origin.x, p.origin.y, p.origin.z], region.min, region.max)) warnings.push(`static prop ${p.model} at the region`);
-  writeFileSync(join(out, `kitsune-${name}.json`), JSON.stringify({ map: 'surf_kitsune.bsp', sha256: sha, region, warnings, brushes }));
+  writeFileSync(join(out, `kitsune-${name}.json`), JSON.stringify({ map: 'surf_kitsune.bsp', sha256: sha, region, warnings, brushes, entityBrushes }));
   console.log(`${name}: ${brushes.length} brushes; ${warnings.length ? warnings.join('; ') : 'no entities, displacements or props'}`);
 }
