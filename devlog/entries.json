@@ -142,5 +142,11 @@
   "title": "Speedometer off the action bar",
   "caption": "It was drawn on the action-bar line, garbling Karambit messages, and read 0 u/s at rest beside a ramp. Now it sits one line above and hides below 1 u/s.",
   "at": "2026-10-01 06:18"
+ },
+ {
+  "file": "shots/25-packet-bursts-no-longer-stop-surfers.jpg",
+  "title": "Packet bursts no longer stop surfers",
+  "caption": "A 300 ms stall or client hitch lands 6 move packets in one server tick; vanilla's check sent surfers above 1312 u/s back and stopped them dead. Surfers now get a 10-block budget per packet (server game test).",
+  "at": "2026-10-01 06:18"
  }
 ]
