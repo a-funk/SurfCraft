@@ -13,9 +13,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
 /**
- * While the player holds the Karambit (main hand, not sneaking) and looks at a block, outlines the box its click would
- * fill: green when it fits, red when it doesn't (blocked cells outlined too). Uses the server's own {@link ModulePlacer}
- * plan, as per-tick gizmos (emitted inside the client tick, drawn every frame until the next one).
+ * While the player holds the Karambit (main hand, not sneaking, allowed to build) and looks at a block, outlines the box
+ * its click would fill: green when it fits, red when it doesn't (blocked cells outlined too). Uses the server's own
+ * {@link ModulePlacer} plan, as per-tick gizmos (emitted inside the client tick, drawn every frame until the next one).
  */
 public final class KarambitPreview {
 	private static final int FITS = 0xFF35E06A, BLOCKED = 0xFFFF3B3B;
@@ -29,7 +29,7 @@ public final class KarambitPreview {
 
 	private static void tick(Minecraft client) {
 		ItemStack knife = client.player == null ? ItemStack.EMPTY : client.player.getMainHandItem();
-		if (!knife.is(KarambitItem.KARAMBIT) || client.player.isShiftKeyDown() || client.level == null
+		if (!knife.is(KarambitItem.KARAMBIT) || client.player.isShiftKeyDown() || !client.player.mayBuild() || client.level == null
 				|| !(client.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
 		ModulePlacer.Plan plan = ModulePlacer.plan(client.level, client.player, knife, hit.getBlockPos(), hit.getDirection());
 		int color = plan.ok() ? FITS : BLOCKED;

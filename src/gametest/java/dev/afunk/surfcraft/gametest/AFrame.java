@@ -1,6 +1,7 @@
 package dev.afunk.surfcraft.gametest;
 
 import dev.afunk.surfcraft.block.SurfRampBlock;
+import dev.afunk.surfcraft.physics.RampCell;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
@@ -19,7 +20,8 @@ record AFrame(SurfRampBlock block, int ridge, int base, int z0, int height, int 
 	void build(Level level) {
 		int p = block.p, q = block.q, plane = q * height;
 		for (int w = 0; w < length; w++) for (int y = 0; y < height; y++) for (int u = 0; p * u < plane; u++) {
-			int cut = plane - p * u - q * y;
+			// The plane through the ridge top, C = q*height: the (unclamped) cut of cell (0, 0), carried to (u, y).
+			int cut = RampCell.continueCut(p, q, plane, 0, 0, u, y);
 			if (cut < 1) continue;
 			for (Direction facing : new Direction[] {Direction.EAST, Direction.WEST}) {
 				BlockState state = cut >= p + q && stone ? Blocks.STONE.defaultBlockState()

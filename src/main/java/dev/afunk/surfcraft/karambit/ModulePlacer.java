@@ -18,7 +18,6 @@ import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Prediction;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -34,7 +33,9 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.BooleanOp;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -42,8 +43,8 @@ import org.jspecify.annotations.Nullable;
  * (which outlines the plan); also copies modules from ramps and keeps each player's last placements for undo.
  */
 public final class ModulePlacer {
-	/** Extend gives up on connected ramps with more blocks than this. ponytail: a flood fill per click/preview tick; cache it if huge ramps lag. */
-	private static final int MAX_RAMP_BLOCKS = 8192;
+	/** Copy gives up on ramps with more blocks than this in its window (a ramp the knife holds has at most 32^3). */
+	private static final int MAX_RAMP_BLOCKS = 32768;
 	private static final int UNDO_DEPTH = 8;
 	/** Each player's last placements, newest first (server thread only; cleared when the server stops). */
 	static final Map<UUID, Deque<Placement>> HISTORY = new HashMap<>();
@@ -86,6 +87,7 @@ public final class ModulePlacer {
 	 * player (and away from a clicked side face), centred across.
 	 */
 	public static Plan plan(Level level, Player player, ItemStack knife, BlockPos clicked, Direction face) {
+		if (!player.mayBuild()) return refusal(clicked, "surfcraft.karambit.may_not_build");
 		SurfModule module = module(knife);
 		BlockState target = level.getBlockState(clicked);
 		if (SurfRampBlock.isRamp(target)) return extend(level, player, module, clicked.immutable());
@@ -109,38 +111,77 @@ public final class ModulePlacer {
 		return grow > 0 ? anchor : grow < 0 ? anchor - size + 1 : anchor - (size - 1) / 2;
 	}
 
+	/** A refusal before any cell is planned. */
+	private static Plan refusal(BlockPos clicked, String key) {
+		return new Plan(Map.of(), new BoundingBox(clicked), List.of(), Component.translatable(key), false);
+	}
+
 	/**
-	 * The module right after the end of the clicked ramp in the direction the player looks along it, on the ramp's
-	 * bottom and across its lateral bounds. It must continue the ramp's end slice exactly ({@link #joins}): turned forward,
-	 * else turned back (a one-sided ramp copied looking the other way).
+	 * The module right after the end of the clicked ramp in the direction the player looks along it, on the bottom of the
+	 * ramp's end slice and across its lateral bounds. It must continue that slice exactly ({@link #joins}): turned forward,
+	 * else turned back (a one-sided ramp copied looking the other way). Only the clicked cell's line to the end and the end
+	 * slice are read, so ramps of any length extend, and the preview costs the same on all of them.
 	 */
 	private static Plan extend(Level level, Player player, SurfModule module, BlockPos clicked) {
 		Direction.Axis across = level.getBlockState(clicked).getValue(SurfRampBlock.FACING).getAxis();
 		Direction.Axis along = across == Direction.Axis.X ? Direction.Axis.Z : Direction.Axis.X;
-		Set<BlockPos> ramp = connectedRamp(level, clicked, Integer.MAX_VALUE);
-		if (ramp == null) return new Plan(Map.of(), new BoundingBox(clicked), List.of(), Component.translatable("surfcraft.karambit.too_large"), true);
-		BoundingBox box = BoundingBox.encapsulatingPositions(ramp).orElseThrow();
 		Direction way = looking(player, along);
-		int step = way.getAxisDirection().getStep();
-		int end = step > 0 ? along.choose(box.maxX(), box.maxY(), box.maxZ()) : along.choose(box.minX(), box.minY(), box.minZ());
-		int from = Math.min(end + step, end + step * module.length()), side = across.choose(box.minX(), box.minY(), box.minZ());
+		BlockPos end = clicked;
+		while (rampOn(level, end.relative(way), across)) end = end.relative(way);
+		if (!level.isLoaded(end.relative(way))) return refusal(clicked, "surfcraft.karambit.too_far");
+		Set<BlockPos> slice = endSlice(level, end, across, module);
+		if (slice == null) return refusal(clicked, "surfcraft.karambit.mismatch");
+		BoundingBox box = BoundingBox.encapsulatingPositions(slice).orElseThrow();
+		int step = way.getAxisDirection().getStep(), at = end.get(along);
+		int from = Math.min(at + step, at + step * module.length()), side = across.choose(box.minX(), box.minY(), box.minZ());
 		BlockPos min = along == Direction.Axis.X ? new BlockPos(from, box.minY(), side) : new BlockPos(side, box.minY(), from);
 		Plan first = null;
 		for (Direction forward : List.of(way, way.getOpposite())) {
 			Map<BlockPos, BlockState> cells = layout(module, turn(Direction.SOUTH, forward), min);
-			if (joins(level, ramp, cells, way, end)) return check(level, player, cells, true, null);
+			if (joins(level, slice, cells, way, at)) return check(level, player, cells, true, null);
 			if (first == null) first = check(level, player, cells, true, Component.translatable("surfcraft.karambit.mismatch"));
 		}
 		return first;
 	}
 
+	/** Whether a loaded ramp block whose facing lies on {@code across} is at {@code pos}. */
+	private static boolean rampOn(Level level, BlockPos pos, Direction.Axis across) {
+		if (!level.isLoaded(pos)) return false;
+		BlockState state = level.getBlockState(pos);
+		return SurfRampBlock.isRamp(state) && state.getValue(SurfRampBlock.FACING).getAxis() == across;
+	}
+
 	/**
-	 * Whether the module continues the ramp's end slice exactly: across the joint every ramp cell faces a cell in the same
-	 * state, so each slope plane runs on unchanged ({@code RampCell.continueCut} along a ramp keeps the cut).
+	 * The ramp cells in {@code end}'s slice across the ramp that connect to it within the slice; null once they span more
+	 * than the module's cross-section, which then can't continue them.
 	 */
-	private static boolean joins(Level level, Set<BlockPos> ramp, Map<BlockPos, BlockState> cells, Direction way, int end) {
-		for (BlockPos p : ramp) {
-			if (p.get(way.getAxis()) == end && !cells.getOrDefault(p.relative(way), AIR).equals(level.getBlockState(p))) return false;
+	private static @Nullable Set<BlockPos> endSlice(Level level, BlockPos end, Direction.Axis across, SurfModule module) {
+		Direction side = Direction.fromAxisAndDirection(across, Direction.AxisDirection.POSITIVE);
+		Set<BlockPos> found = new HashSet<>(List.of(end));
+		ArrayDeque<BlockPos> queue = new ArrayDeque<>(found);
+		BoundingBox box = new BoundingBox(end);
+		while (!queue.isEmpty()) {
+			BlockPos at = queue.poll();
+			for (BlockPos n : BlockPos.betweenClosed(at.relative(side, -1).below(), at.relative(side).above())) {
+				if (found.contains(n) || !rampOn(level, n, across)) continue;
+				BlockPos pos = n.immutable();
+				box = BoundingBox.encapsulating(box, new BoundingBox(pos));
+				if (across.choose(box.getXSpan(), box.getYSpan(), box.getZSpan()) > module.width() || box.getYSpan() > module.height()) return null;
+				found.add(pos);
+				queue.add(pos);
+			}
+		}
+		return found;
+	}
+
+	/**
+	 * Whether the module continues the ramp's end slice (at {@code end} along the ramp) exactly: across the joint every
+	 * ramp cell faces a cell in the same state, so each slope plane runs on unchanged ({@code RampCell.continueCut} along a
+	 * ramp keeps the cut).
+	 */
+	private static boolean joins(Level level, Set<BlockPos> slice, Map<BlockPos, BlockState> cells, Direction way, int end) {
+		for (BlockPos p : slice) {
+			if (!cells.getOrDefault(p.relative(way), AIR).equals(level.getBlockState(p))) return false;
 		}
 		for (Map.Entry<BlockPos, BlockState> cell : cells.entrySet()) {
 			BlockPos p = cell.getKey();
@@ -158,31 +199,53 @@ public final class ModulePlacer {
 		Map<BlockPos, BlockState> out = new LinkedHashMap<>();
 		for (int y = 0; y < module.height(); y++) {
 			for (int x = 0; x < module.width(); x++) {
-				for (int z = 0; z < module.length(); z++) out.put(origin.offset(new BlockPos(x, y, z).rotate(turn)), cells[module.index(x, y, z)].rotate(turn));
+				for (int z = 0; z < module.length(); z++) out.put(origin.offset(new BlockPos(x, y, z).rotate(turn)), cells[SurfModule.index(module.width(), module.length(), x, y, z)].rotate(turn));
 			}
 		}
 		return out;
 	}
 
-	/** Every non-air cell must land in the world, on air or a replaceable block, clear of entities and spawn protection. */
+	/**
+	 * Every non-air cell must land on a loaded spot in the world, on air or a replaceable block, clear of entities, the
+	 * player and spawn protection. A refusal names the cause when all blocked cells share it: the player in the way, or
+	 * spawn protection (which only the server knows); otherwise there's no room.
+	 */
 	private static Plan check(Level level, Player player, Map<BlockPos, BlockState> cells, boolean extend, @Nullable Component problem) {
 		BoundingBox box = BoundingBox.encapsulatingPositions(cells.keySet()).orElseThrow();
-		boolean crowded = !level.getEntities((Entity) null, AABB.of(box)).isEmpty();
+		boolean crowded = !level.getEntities(player, AABB.of(box)).isEmpty();
+		AABB body = player.getBoundingBox();
 		List<BlockPos> blocked = new ArrayList<>();
-		cells.forEach((pos, state) -> {
-			if (!state.isAir() && (!level.isInWorldBounds(pos) || !level.getWorldBorder().isWithinBounds(pos) || !level.mayInteract(player, pos)
-					|| !level.getBlockState(pos).canBeReplaced() || crowded && !level.isUnobstructed(state, pos, CollisionContext.empty()))) blocked.add(pos);
-		});
-		if (problem == null && !blocked.isEmpty()) problem = Component.translatable("surfcraft.karambit.blocked", blocked.size());
+		int inTheWay = 0, protectedCells = 0;
+		for (Map.Entry<BlockPos, BlockState> cell : cells.entrySet()) {
+			BlockPos pos = cell.getKey();
+			if (cell.getValue().isAir()) continue;
+			boolean touches = body.intersects(pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
+			VoxelShape shape = crowded || touches ? cell.getValue().getCollisionShape(level, pos).move(pos) : Shapes.empty();
+			if (!level.isLoaded(pos) || !level.isInWorldBounds(pos) || !level.getWorldBorder().isWithinBounds(pos) || !level.getBlockState(pos).canBeReplaced()
+					|| crowded && !level.isUnobstructed(player, shape)) {
+				blocked.add(pos);
+			} else if (!level.mayInteract(player, pos)) {
+				blocked.add(pos);
+				protectedCells++;
+			} else if (touches && Shapes.joinIsNotEmpty(shape, Shapes.create(body), BooleanOp.AND)) {
+				blocked.add(pos);
+				inTheWay++;
+			}
+		}
+		if (problem == null && !blocked.isEmpty()) {
+			problem = protectedCells == blocked.size() ? Component.translatable("surfcraft.karambit.spawn_protection", blocked.size())
+					: inTheWay == blocked.size() ? Component.translatable("surfcraft.karambit.in_the_way")
+					: Component.translatable("surfcraft.karambit.blocked", blocked.size());
+		}
 		return new Plan(cells, box, blocked, problem, extend);
 	}
 
 	/**
 	 * The ramp blocks connected to {@code start} through any of their 26 neighbours whose facings lie on start's facing
-	 * axis (so a two-sided ramp is one), keeping their bounding box within {@code span} blocks per axis; null if more
-	 * than {@link #MAX_RAMP_BLOCKS}.
+	 * axis (so a two-sided ramp is one), within {@link SurfModule#MAX_SIZE} slices {@code along} the ramp; null past
+	 * {@link #MAX_RAMP_BLOCKS}.
 	 */
-	static @Nullable Set<BlockPos> connectedRamp(BlockGetter level, BlockPos start, int span) {
+	static @Nullable Set<BlockPos> connectedRamp(BlockGetter level, BlockPos start, Direction.Axis along) {
 		Direction.Axis axis = level.getBlockState(start).getValue(SurfRampBlock.FACING).getAxis();
 		Set<BlockPos> found = new HashSet<>(List.of(start));
 		ArrayDeque<BlockPos> queue = new ArrayDeque<>(found);
@@ -193,7 +256,7 @@ public final class ModulePlacer {
 				BlockState state = level.getBlockState(n);
 				if (!SurfRampBlock.isRamp(state) || state.getValue(SurfRampBlock.FACING).getAxis() != axis || found.contains(n)) continue;
 				BoundingBox grown = BoundingBox.encapsulating(box, new BoundingBox(n));
-				if (Math.max(grown.getXSpan(), Math.max(grown.getYSpan(), grown.getZSpan())) > span) continue;
+				if (along.choose(grown.getXSpan(), grown.getYSpan(), grown.getZSpan()) > SurfModule.MAX_SIZE) continue;
 				BlockPos pos = n.immutable();
 				found.add(pos);
 				box = grown;
@@ -205,16 +268,20 @@ public final class ModulePlacer {
 	}
 
 	/**
-	 * Copies the ramp at {@code clicked} ({@link #connectedRamp}, up to 32 blocks per axis) and everything else in its
-	 * bounding box onto the knife, turned into the module frame: z along the ramp, forward the way the player looks
-	 * along it.
+	 * Copies the ramp at {@code clicked} ({@link #connectedRamp}: up to 32 slices of a longer ramp) and everything else in
+	 * its bounding box onto the knife, turned into the module frame: z along the ramp, forward the way the player looks
+	 * along it. A ramp wider or taller than the knife holds is refused by its size.
 	 */
 	public static Result copy(Level level, Player player, ItemStack knife, BlockPos clicked) {
-		Set<BlockPos> ramp = connectedRamp(level, clicked, SurfModule.MAX_SIZE);
+		Direction.Axis across = level.getBlockState(clicked).getValue(SurfRampBlock.FACING).getAxis();
+		Direction.Axis along = across == Direction.Axis.X ? Direction.Axis.Z : Direction.Axis.X;
+		Set<BlockPos> ramp = connectedRamp(level, clicked, along);
 		if (ramp == null) return Result.fail("surfcraft.karambit.too_large");
-		Direction.Axis along = level.getBlockState(clicked).getValue(SurfRampBlock.FACING).getAxis() == Direction.Axis.X ? Direction.Axis.Z : Direction.Axis.X;
-		Rotation turn = turn(looking(player, along), Direction.SOUTH);
 		BoundingBox box = BoundingBox.encapsulatingPositions(ramp).orElseThrow();
+		int wide = across.choose(box.getXSpan(), box.getYSpan(), box.getZSpan());
+		if (wide > SurfModule.MAX_SIZE) return Result.fail("surfcraft.karambit.too_wide", wide, SurfModule.MAX_SIZE);
+		if (box.getYSpan() > SurfModule.MAX_SIZE) return Result.fail("surfcraft.karambit.too_tall", box.getYSpan(), SurfModule.MAX_SIZE);
+		Rotation turn = turn(looking(player, along), Direction.SOUTH);
 		BlockPos min = new BlockPos(box.minX(), box.minY(), box.minZ());
 		BlockPos far = BlockPos.ZERO.offset(box.getLength()).rotate(turn);
 		BlockPos shift = new BlockPos(-Math.min(0, far.getX()), 0, -Math.min(0, far.getZ()));
@@ -222,7 +289,7 @@ public final class ModulePlacer {
 		BlockState[] cells = new BlockState[width * height * length];
 		for (BlockPos p : BlockPos.betweenClosed(min, new BlockPos(box.maxX(), box.maxY(), box.maxZ()))) {
 			BlockPos c = p.subtract(min).rotate(turn).offset(shift);
-			cells[(c.getY() * width + c.getX()) * length + c.getZ()] = carried(level.getBlockState(p)).rotate(turn);
+			cells[SurfModule.index(width, length, c.getX(), c.getY(), c.getZ())] = carried(level.getBlockState(p)).rotate(turn);
 		}
 		SurfModule module = SurfModule.of(width, height, length, cells);
 		if (SurfModule.validate(module).isError()) return Result.fail("surfcraft.karambit.too_complex");

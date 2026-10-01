@@ -3,8 +3,6 @@ package dev.afunk.surfcraft.gametest;
 import dev.afunk.surfcraft.block.SurfBlocks;
 import dev.afunk.surfcraft.karambit.KarambitItem;
 import dev.afunk.surfcraft.karambit.SurfModule;
-import java.nio.file.Path;
-import java.util.Comparator;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -27,11 +25,10 @@ import net.minecraft.world.level.levelgen.Heightmap;
  * The Karambit in a real client (superflat, noon, 1280x720), through real input: a two-sided 2:1 ramp chunk (6 wide,
  * 6 tall, 4 long) built cell by cell with the joining rule is copied (sneak + use) and extended three times (use),
  * a fresh knife places its default module, and the green (fits) and red (blocked) previews and the knife in hand are
- * shot into build/gametest/screenshots.
+ * shot into build/gametest/screenshots. Then a 16-tall 5:4 A-frame is copied and extended to 208 blocks, and adventure
+ * mode is checked: no preview, and a sneak + click undoes nothing.
  */
 public class KarambitClientTest implements FabricClientGameTest {
-	private static final Path SCREENSHOTS = Path.of(System.getProperty("surfcraft.screenshots", "screenshots"));
-
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		if (!ClientTests.enabled("karambit")) return;
@@ -66,7 +63,7 @@ public class KarambitClientTest implements FabricClientGameTest {
 				aim(context, world, 1.5, g + 3, -3.5, 1.5, g + 2.5, 0.5);
 				context.getInput().pressKey(options -> options.keyUse);
 				context.waitTicks(3);
-				int length = world.getServer().computeOnServer(server -> rampLength(server.overworld(), g));
+				int length = world.getServer().computeOnServer(server -> rampLength(server.overworld(), -1, 6, g, g + 6));
 				if (length != 4 + 4 * i) throw new AssertionError("after extension " + i + " the ramp is " + length + " long");
 			}
 			shot(context, world, "karambit_extended", -9, g + 9, -6, 3, g + 1, 9);
@@ -95,7 +92,7 @@ public class KarambitClientTest implements FabricClientGameTest {
 			long before = world.getServer().computeOnServer(server -> count(server, redMin, redMax));
 			context.getInput().pressKey(options -> options.keyUse);
 			context.waitTicks(4);
-			context.takeScreenshot(TestScreenshotOptions.of("karambit_refused").withDestinationDir(SCREENSHOTS));
+			context.takeScreenshot(TestScreenshotOptions.of("karambit_refused").withDestinationDir(ClientTests.OUT));
 			long after = world.getServer().computeOnServer(server -> count(server, redMin, redMax));
 			if (after != before) throw new AssertionError("a refused placement changed " + (after - before) + " blocks");
 			// Holding the copied module by the long ramp: the box shows where the next extension goes.
@@ -119,7 +116,7 @@ public class KarambitClientTest implements FabricClientGameTest {
 			});
 			context.getInput().setCursorPos(cursor[0], cursor[1]);
 			context.waitTicks(5);
-			context.takeScreenshot(TestScreenshotOptions.of("karambit_tooltip").withDestinationDir(SCREENSHOTS));
+			context.takeScreenshot(TestScreenshotOptions.of("karambit_tooltip").withDestinationDir(ClientTests.OUT));
 			context.setScreen(() -> null);
 
 			// Undo: sneak + use looking at the sky takes back the last placement, the default module.
@@ -131,6 +128,52 @@ public class KarambitClientTest implements FabricClientGameTest {
 			context.getInput().releaseKey(options -> options.keyShift);
 			long left = world.getServer().computeOnServer(server -> count(server, defaultMin, defaultMax));
 			if (left != 0) throw new AssertionError("undo left " + left + " blocks of the default module");
+
+			// A surf-sized ramp: a 16-tall 5:4 A-frame 8 long (ridge at x = 60) copied with a fresh knife from its north end,
+			// then extended 25 times to 208 blocks by a player walking along its east foot, clicking it 3 blocks from its south
+			// end (extend never loads chunks, so the end must be in view).
+			world.getServer().runOnServer(server -> {
+				new AFrame(SurfBlocks.SURF_RAMP, 60, g, 0, 16, 8, false).build(server.overworld());
+				player(server).getInventory().setItem(2, new ItemStack(KarambitItem.KARAMBIT));
+			});
+			context.getInput().pressKey(options -> options.keyHotbarSlots[2]);
+			aim(context, world, 63.5, g + 2, -3.5, 63.5, g + 1.5, 0.5);
+			context.getInput().holdKey(options -> options.keyShift);
+			context.waitTicks(2);
+			context.getInput().pressKey(options -> options.keyUse);
+			context.waitTicks(2);
+			context.getInput().releaseKey(options -> options.keyShift);
+			for (int i = 1; i <= 25; i++) {
+				aim(context, world, 76.5, g, 8 * i - 4.5, 72.3, g + 0.3, 8 * i - 3);
+				context.getInput().pressKey(options -> options.keyUse);
+				context.waitTicks(3);
+			}
+			int surfLength = world.getServer().computeOnServer(server -> rampLength(server.overworld(), 46, 73, g, g + 16));
+			if (surfLength != 208) throw new AssertionError("the A-frame is " + surfLength + " long after 25 extensions, want 208");
+			// The whole ramp needs more than the tests' 5-chunk view. The server then sends a round area, which the harness's
+			// square chunk check never sees complete, so this shot waits a fixed time instead.
+			context.runOnClient(client -> client.options.renderDistance().set(16));
+			aim(context, world, 108, g + 34, 236, 62, g + 6, 120);
+			context.waitTicks(100);
+			context.takeScreenshot(TestScreenshotOptions.of("karambit_surf_ramp_208").withDestinationDir(ClientTests.OUT));
+			context.runOnClient(client -> client.options.renderDistance().set(5));
+
+			// Adventure mode: no preview, and a sneak + click on a ramp (which reaches use(), as ItemStack.useOn passes without
+			// building) says why and undoes nothing.
+			world.getServer().runCommand("gamemode adventure @a");
+			BlockPos surfMin = new BlockPos(46, g, 0), surfMax = new BlockPos(73, g + 15, 207);
+			long surfBlocks = world.getServer().computeOnServer(server -> count(server, surfMin, surfMax));
+			aim(context, world, 63.5, g + 2, -3.5, 63.5, g + 1.5, 0.5);
+			context.getInput().holdKey(options -> options.keyShift);
+			context.waitTicks(2);
+			context.getInput().pressKey(options -> options.keyUse);
+			context.waitTicks(2);
+			context.getInput().releaseKey(options -> options.keyShift);
+			context.waitTicks(3);
+			context.takeScreenshot(TestScreenshotOptions.of("karambit_adventure").withDestinationDir(ClientTests.OUT));
+			long surfLeft = world.getServer().computeOnServer(server -> count(server, surfMin, surfMax));
+			if (surfLeft != surfBlocks) throw new AssertionError("an adventure sneak-click changed " + (surfBlocks - surfLeft) + " blocks");
+			world.getServer().runCommand("gamemode creative @a");
 		}
 	}
 
@@ -146,26 +189,25 @@ public class KarambitClientTest implements FabricClientGameTest {
 	/** A two-sided 2:1 ramp, ridge along z at x = 3, x 0..5, 6 tall, z 0..3, built bottom up; returns the ground's y. */
 	private static int build(ServerLevel level) {
 		int g = level.getHeight(Heightmap.Types.MOTION_BLOCKING, 0, 0);
-		Comparator<TestRamp.Cell> bottomUp = Comparator.comparingInt(TestRamp.Cell::y).thenComparingInt(c -> -c.u()).thenComparingInt(TestRamp.Cell::w);
 		for (TestRamp ramp : new TestRamp[] {
 				new TestRamp(SurfBlocks.STEEP_SURF_RAMP, Direction.WEST, new BlockPos(2, g, 0), 3, 6, 4, 2, 0),
 				new TestRamp(SurfBlocks.STEEP_SURF_RAMP, Direction.EAST, new BlockPos(3, g, 0), 3, 6, 4, 2, 0)}) {
-			String error = ramp.place(level, ramp.sorted(bottomUp));
+			String error = ramp.place(level, ramp.sorted(TestRamp.BOTTOM_UP));
 			if (error != null) throw new AssertionError(error);
 		}
 		return g;
 	}
 
-	/** How many z-slices from z = 0 hold exactly the hand-built chunk's z = 0 slice. */
-	private static int rampLength(ServerLevel level, int g) {
+	/** How many z-slices from z = 0 hold exactly the z = 0 slice, over x0..x1 and y0..y1. */
+	private static int rampLength(ServerLevel level, int x0, int x1, int y0, int y1) {
 		int z = 0;
-		while (z < 64 && sameSlice(level, g, z)) z++;
+		while (z < 512 && sameSlice(level, x0, x1, y0, y1, z)) z++;
 		return z;
 	}
 
-	private static boolean sameSlice(ServerLevel level, int g, int z) {
-		for (int x = -1; x <= 6; x++) {
-			for (int y = g; y < g + 7; y++) {
+	private static boolean sameSlice(ServerLevel level, int x0, int x1, int y0, int y1, int z) {
+		for (int x = x0; x <= x1; x++) {
+			for (int y = y0; y <= y1; y++) {
 				if (level.getBlockState(new BlockPos(x, y, z)) != level.getBlockState(new BlockPos(x, y, 0))) return false;
 			}
 		}
@@ -191,6 +233,6 @@ public class KarambitClientTest implements FabricClientGameTest {
 	private static void shot(ClientGameTestContext context, TestSingleplayerContext world, String name, double x, double y, double z, double tx, double ty, double tz) {
 		aim(context, world, x, y, z, tx, ty, tz);
 		world.getConnection().waitForChunksRender();
-		context.takeScreenshot(TestScreenshotOptions.of(name).withDestinationDir(SCREENSHOTS));
+		context.takeScreenshot(TestScreenshotOptions.of(name).withDestinationDir(ClientTests.OUT));
 	}
 }
