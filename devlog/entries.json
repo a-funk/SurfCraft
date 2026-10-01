@@ -190,5 +190,11 @@
   "title": "A 208-block surf ramp from 25 Karambit clicks",
   "caption": "D4: extend reads only the ramp's end slice, so a copied 16-tall 5:4 A-frame grows to 208 blocks through real clicks (it used to stop at 40).",
   "at": "2026-10-01 06:47"
+ },
+ {
+  "file": "shots/33-extend-preview-cost-no-longer-grows-with-the-ram.jpg",
+  "title": "Extend preview cost no longer grows with the ramp",
+  "caption": "D3: plan(), run every tick while the knife points at a ramp, went from 1.7-4.9 ms (refusing past 8,192 cells) to about 0.03 ms at any length.",
+  "at": "2026-10-01 06:47"
  }
 ]
