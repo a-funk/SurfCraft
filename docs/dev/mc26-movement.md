@@ -676,7 +676,11 @@ in section 9.
     zero velocity (Wave C review, B1 and C1).
   - Exempt: the singleplayer owner, and everyone under `/gamerule player_movement_check false`. Turning
     the gamerule off is not the answer for surf servers: it lifts the only per-packet distance bound for
-    every client. The mod has to give surfers a budget their speed fits.
+    every client, and one long packet near a ramp would cost seconds of re-simulation (review C7).
+  - **SurfCraft (review B1/C1):** players in the server's surf window (`movement.Surfing`: opened by a move
+    within the controller's reach of a ramp, kept while airborne, closed after 10 ground moves or any
+    teleport) get vanilla's single-packet budget (100 square blocks from the last accepted position) for
+    every packet, while their packets run at most 5 s ahead of real time. Everyone else keeps vanilla's check.
 - **Moved wrongly** has no distance limit. It fails only when the re-simulation disagrees by more than
   0.25 blocks horizontally.
 - **`isEntityCollidingWithAnythingNew`** only checks the end box.
@@ -689,6 +693,8 @@ in section 9.
 - **The floating kick** needs more than 80 consecutive ticks of not descending with nothing within
   0.55 blocks below. CS:S gravity (800 u/s², no drag) keeps a vertical launch above about 3175 u/s
   rising that long, so such a launch is kicked on a dedicated server (Wave C review, B7).
+  SurfCraft counts a move whose vertical step follows CS:S gravity from the last one as falling, not
+  floating, so long CS:S airtime is not kicked.
 
 ## 5. Fall damage pipeline
 
@@ -987,7 +993,8 @@ More traps:
 - **Server lag.** Move packets that queue up during a server stall or a client hitch are handled in
   one server tick, and from the 6th the budget is a single packet's: six packets fail above 1312 u/s,
   and above 3521 u/s fewer do (4.5). The player is teleported back with zero velocity. Turning off
-  `player_movement_check` is not the fix (it unbounds every client); the mod must budget surfers.
+  `player_movement_check` is not the fix (it unbounds every client); SurfCraft budgets surfers per
+  packet in its server-side surf window (4.5).
 - **Elytra.** With an elytra worn, pressing jump in mid-air starts gliding (`LocalPlayer.aiStep` step 9)
   and drops out of the controller.
 - **Two threads in singleplayer.** The client and integrated server threads both run the common
