@@ -94,5 +94,11 @@
   "title": "The knife remembers its module",
   "caption": "The copied module is stored on the item (palette plus run-length encoded blocks), so it survives restarts; the tooltip shows its size and the controls.",
   "at": "2026-10-01 03:00"
+ },
+ {
+  "file": "shots/17-surfing-in-third-person.jpg",
+  "title": "Surfing in third person",
+  "caption": "Third-person view of a survival surf run on the 51-degree ramp at 724 units/s. The legs stay still while sliding instead of running in place, the speedometer reads horizontal speed, and the server accepted every move without a single correction.",
+  "at": "2026-10-01 03:09"
  }
 ]
