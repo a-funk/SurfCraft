@@ -8,11 +8,13 @@ A Fabric mod for Minecraft Java 26.3: CS:S surf ramps and CS:S surf movement. `M
   (`/usr/bin/java` is the macOS stub and fails).
 - `./gradlew build` builds and runs the JUnit tests and the server game tests; `./gradlew test` runs only the JUnit
   tests, `./gradlew runGameTest` only the game tests (report: `build/gametest/server-tests.xml`).
-- `./gradlew runClientGameTest` opens a client window, builds a ramp showcase in a superflat world and saves
-  screenshots to `build/gametest/screenshots/`. Game tests live in `src/gametest` (not in the mod jar).
-  It also runs the surf tests in survival, single player (`surf`) and against an in-process dedicated server
-  (`server`), which fail on any server correction; pick some with `-PclientTests=surf,server,showcase`. The
-  window must be able to draw: with the display asleep macOS blocks the first frame (`caffeinate -u` wakes it).
+- `./gradlew runClientGameTest` opens a client window and runs the client game tests: a ramp showcase in a
+  superflat world, the Karambit driven through real input, and the surf tests in survival, single player
+  (`surf`) and against an in-process dedicated server (`server`), which fail on any server correction. Pick some
+  with `-PclientTests=showcase,karambit,surf,server`. Screenshots go to `build/gametest/screenshots/`. Game
+  tests live in `src/gametest` (not in the mod jar). The window must be able to draw: with the display asleep
+  macOS blocks the first frame (`caffeinate -d -u`). Aim with `tp ... facing` from the feet (it is not
+  eye-anchored), and set flying on the server: a client-only `flying` flag is reset and clicks miss.
 - `./gradlew runClient` starts the dev client (offline account, `run/` folder).
 - Physics reference replays need the user's own map geometry in `local-content/` (gitignored):
   `node tools/extract-kitsune-brushes.mjs`. Without it those cases skip; never commit map content.
@@ -28,6 +30,8 @@ Never copy decompiled code into this repo; describe behaviour in your own words.
 ## Layout
 - `dev.afunk.surfcraft.physics`: the CS:S movement core, pure Java in Source units and axes (x, y, z-up),
   no Minecraft imports. `RampCell` is the shared ramp-cell geometry.
+- `dev.afunk.surfcraft.karambit`: the Karambit surf-building tool: `SurfModule` (the module data component),
+  `ModulePlacer` (copy, extend, free placement, undo; shared with the client preview), `KarambitItem`.
 - Other packages: blocks, registration, Minecraft integration (`src/main`), client code (`src/client`).
 - Mixins: `surfcraft.mixins.json` (common), `surfcraft.client.mixins.json` (client).
 

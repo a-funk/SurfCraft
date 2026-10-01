@@ -10,5 +10,6 @@ public final class SurfCraftClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		RampModels.register();
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, SurfCraft.id("speedometer"), SpeedHud::extract);
+		KarambitPreview.register();
 	}
 }

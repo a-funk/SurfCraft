@@ -7,10 +7,12 @@
 	"entrypoints": {
 		"fabric-gametest": [
 			"dev.afunk.surfcraft.gametest.RampGameTests",
-			"dev.afunk.surfcraft.gametest.SurfMovementGameTests"
+			"dev.afunk.surfcraft.gametest.SurfMovementGameTests",
+			"dev.afunk.surfcraft.gametest.KarambitGameTests"
 		],
 		"fabric-client-gametest": [
 			"dev.afunk.surfcraft.gametest.RampShowcaseClientTest",
+			"dev.afunk.surfcraft.gametest.KarambitClientTest",
 			"dev.afunk.surfcraft.gametest.SurfClientTest",
 			"dev.afunk.surfcraft.gametest.SurfServerClientTest"
 		]
