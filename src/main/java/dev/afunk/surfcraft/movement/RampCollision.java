@@ -81,7 +81,7 @@ public final class RampCollision {
 		BlockPos anchor = player.blockPosition();
 		V3 hull = BrushWorld.hull(player), centre = BrushWorld.toSource(player.position(), anchor).add(new V3(0, 0, hull.z())), down = centre.sub(new V3(0, 0, 2));
 		for (Brush b : BrushWorld.collect(player.level(), player, below, anchor, true)) {
-			double nz = ExactCollide.first(List.of(b), centre, down, hull, ExactCollide.TOL).normal().z();
+			double nz = ExactCollide.first(List.of(b), centre, down, hull, ExactCollide.TOL, 0).normal().z();
 			if (nz > 0.01 && nz < SourceMovement.GROUND_NORMAL_Z) return true;
 		}
 		return false;
