@@ -6,12 +6,18 @@
 	"environment": "*",
 	"entrypoints": {
 		"fabric-gametest": [
-			"dev.afunk.surfcraft.gametest.RampGameTests"
+			"dev.afunk.surfcraft.gametest.RampGameTests",
+			"dev.afunk.surfcraft.gametest.SurfMovementGameTests"
 		],
 		"fabric-client-gametest": [
-			"dev.afunk.surfcraft.gametest.RampShowcaseClientTest"
+			"dev.afunk.surfcraft.gametest.RampShowcaseClientTest",
+			"dev.afunk.surfcraft.gametest.SurfClientTest",
+			"dev.afunk.surfcraft.gametest.SurfServerClientTest"
 		]
 	},
+	"mixins": [
+		"surfcraft-gametest.mixins.json"
+	],
 	"depends": {
 		"surfcraft": "*"
 	}

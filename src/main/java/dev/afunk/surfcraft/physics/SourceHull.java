@@ -10,6 +10,13 @@ import java.util.List;
 public final class SourceHull {
 	/** DIST_EPSILON. */
 	public static final double EPSILON = 1.0 / 32;
+	/**
+	 * The entry fraction before any plane updates it: Source's NEVER_UPDATED. The surf repo (like Quake 2) starts at -1
+	 * and so ignores raw entry fractions at or below -1, which a hull already within DIST_EPSILON of a plane gets when it
+	 * moves into it by less than DIST_EPSILON: it then ends up to 1/32 unit inside. Minecraft's server rejects a box
+	 * 1e-5 blocks inside a vanilla shape. All 24 CS:S recordings replay identically with either value.
+	 */
+	static final double NEVER_UPDATED = -9999;
 
 	private SourceHull() {
 	}
@@ -32,7 +39,7 @@ public final class SourceHull {
 		for (Brush brush : world) {
 			V3 min = brush.min(), max = brush.max();
 			if (cx - bx > max.x() || cx + bx < min.x() || cy - by > max.y() || cy + by < min.y() || cz - bz > max.z() || cz + bz < min.z()) continue;
-			double enter = -1, leave = 1;
+			double enter = NEVER_UPDATED, leave = 1;
 			boolean startsOutside = false, endsOutside = false;
 			Plane clip = null;
 			for (Plane p : brush.planes()) {
@@ -58,7 +65,7 @@ public final class SourceHull {
 					allSolid = true;
 					fraction = 0;
 				}
-			} else if (enter < leave && enter > -1 && enter < fraction) {
+			} else if (enter < leave && enter > NEVER_UPDATED && enter < fraction) {
 				fraction = Math.max(0, enter);
 				normal = clip.normal();
 			}

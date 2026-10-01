@@ -33,6 +33,7 @@ public class RampShowcaseClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (!ClientTests.enabled("showcase")) return;
 		context.getInput().resizeWindow(1280, 720);
 		try (TestSingleplayerContext world = context.worldBuilder()
 				.adjustSettings(settings -> settings.setGameMode(WorldCreationUiState.SelectedGameMode.CREATIVE))

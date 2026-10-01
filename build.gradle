@@ -35,6 +35,8 @@ loom.runs.named("gameTest") {
 loom.runs.named("clientGameTest") {
 	// Loom clears the client run directory before launches, so screenshots go next to the server report.
 	vmArg "-Dsurfcraft.screenshots=${layout.buildDirectory.dir('gametest/screenshots').get().asFile}"
+	// ./gradlew runClientGameTest -PclientTests=surf,server runs only those client tests (default: all).
+	vmArg "-Dsurfcraft.clientTests=${providers.gradleProperty('clientTests').getOrElse('')}"
 }
 
 dependencies {

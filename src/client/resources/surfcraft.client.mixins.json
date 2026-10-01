@@ -2,7 +2,11 @@
 	"required": true,
 	"package": "dev.afunk.surfcraft.client.mixin",
 	"compatibilityLevel": "JAVA_25",
-	"client": [],
+	"client": [
+		"LivingEntityAnimationMixin",
+		"LocalPlayerMixin",
+		"PlayerTravelMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	},
