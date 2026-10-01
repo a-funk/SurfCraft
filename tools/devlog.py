@@ -1,6 +1,7 @@
 """SurfCraft dev log: numbered screenshots with captions, a gallery page, and a montage at the end.
 
   .tools/venv/bin/python tools/devlog.py add <image> "Title" "One-line caption"
+  .tools/venv/bin/python tools/devlog.py clip <video> "Title" "One-line caption"   # gameplay clip (H.264, poster frame)
   .tools/venv/bin/python tools/devlog.py page       # rebuild devlog/index.html
   .tools/venv/bin/python tools/devlog.py montage    # devlog/montage.mp4 from every shot (needs ffmpeg)
   .tools/venv/bin/python tools/devlog.py deploy     # publish devlog/ to Railway (project surfcraft-devlog)
@@ -31,11 +32,11 @@ def load():
     return json.loads(ENTRIES.read_text()) if ENTRIES.exists() else []
 
 
-def add(image, title, caption):
+def add(image, title, caption, video=None):
     # Agents in several worktrees add shots to this one log at the same time.
     with open(ROOT / ".lock", "a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        _add(image, title, caption)
+        _add(image, title, caption, video)
         # Every update goes live right away: commit just the dev log, then publish it.
         repo = ["git", "-C", str(ROOT.parent)]
         subprocess.run(repo + ["add", "devlog"], check=False)
@@ -45,26 +46,47 @@ def add(image, title, caption):
         deploy()
 
 
-def _add(image, title, caption):
+def _add(image, title, caption, video=None):
     entries = load()
     SHOTS.mkdir(parents=True, exist_ok=True)
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:48]
     name = f"{len(entries) + 1:02d}-{slug}.jpg"
+    entry = {"file": f"shots/{name}", "title": title, "caption": caption, "at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}
+    if video:
+        # A web-friendly H.264 copy, and its middle frame as the poster.
+        (ROOT / "clips").mkdir(exist_ok=True)
+        clip = ROOT / "clips" / name.replace(".jpg", ".mp4")
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(video), "-vf", "scale=1280:-2", "-c:v", "libx264", "-crf", "24",
+                        "-preset", "medium", "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(clip)], check=True)
+        image = SHOTS / name
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", f"{duration(clip) / 2:.2f}", "-i", str(clip), "-frames:v", "1", str(image)], check=True)
+        entry["video"] = f"clips/{clip.name}"
     img = Image.open(image).convert("RGB")
     if img.width > 1600:
         img = img.resize((1600, round(img.height * 1600 / img.width)), Image.LANCZOS)
     img.save(SHOTS / name, quality=88, optimize=True)
-    entries.append({"file": f"shots/{name}", "title": title, "caption": caption,
-                    "at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")})
+    entries.append(entry)
     ENTRIES.write_text(json.dumps(entries, indent=1) + "\n")
     page()
     print(SHOTS / name)
 
 
+def duration(video):
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(video)],
+                         capture_output=True, text=True, check=True)
+    return float(out.stdout.strip())
+
+
+def media(e):
+    if "video" in e:
+        return (f'<video controls muted loop playsinline preload="none" poster="{html.escape(e["file"])}">'
+                f'<source src="{html.escape(e["video"])}" type="video/mp4"></video>')
+    return f'<a href="{html.escape(e["file"])}"><img src="{html.escape(e["file"])}" loading="lazy" alt="{html.escape(e["title"])}"></a>'
+
+
 def page():
     cards = "\n".join(
-        f'<figure><a href="{html.escape(e["file"])}"><img src="{html.escape(e["file"])}" loading="lazy" '
-        f'alt="{html.escape(e["title"])}"></a><figcaption><span class="n">{i:02d}</span> '
+        f'<figure>{media(e)}<figcaption><span class="n">{i:02d}</span> '
         f'<b>{html.escape(e["title"])}</b><span class="at">{html.escape(e["at"])}</span>'
         f'<p>{html.escape(e["caption"])}</p></figcaption></figure>'
         for i, e in enumerate(load(), 1))
@@ -80,7 +102,7 @@ h1 {{ margin: 0; font-size: 28px; }} h1 span {{ color: var(--accent); }}
 header p {{ color: var(--muted); margin: 4px 0 0; }}
 main {{ max-width: 1100px; margin: auto; padding: 16px; display: grid; gap: 20px; }}
 figure {{ margin: 0; background: var(--card); border-radius: 10px; overflow: hidden; }}
-figure img {{ display: block; width: 100%; height: auto; }}
+figure img, figure video {{ display: block; width: 100%; height: auto; }}
 figcaption {{ padding: 12px 16px; }} figcaption p {{ margin: 4px 0 0; color: var(--muted); }}
 .n {{ color: var(--accent); font-weight: 700; margin-right: 6px; }} .at {{ float: right; color: var(--muted); font-size: 13px; }}
 </style></head><body>
@@ -126,17 +148,25 @@ def montage():
             overlay = Path(tmp) / f"{i:03d}-bar.png"
             bar.save(overlay)
             clip = Path(tmp) / f"{i:03d}.mp4"
-            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-loop", "1", "-i", str(still), "-loop", "1", "-i", str(overlay),
-                            "-filter_complex", "[0]zoompan=z='min(zoom+0.0005,1.04)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-                            ":d=105:s=1280x720:fps=30[z];[z][1]overlay=0:0",
-                            "-t", "3.5", "-pix_fmt", "yuv420p", "-r", "30", str(clip)], check=True)
-            clips.append(clip)
+            if "video" in e:
+                length = min(12.0, duration(ROOT / e["video"]))
+                subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(ROOT / e["video"]), "-loop", "1", "-i", str(overlay),
+                                "-filter_complex", "[0]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,"
+                                "fps=30,setsar=1[v];[v][1]overlay=0:0", "-t", f"{length:.2f}", "-an", "-pix_fmt", "yuv420p", "-r", "30",
+                                str(clip)], check=True)
+            else:
+                length = 3.5
+                subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-loop", "1", "-i", str(still), "-loop", "1", "-i", str(overlay),
+                                "-filter_complex", "[0]zoompan=z='min(zoom+0.0005,1.04)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+                                ":d=105:s=1280x720:fps=30[z];[z][1]overlay=0:0",
+                                "-t", "3.5", "-pix_fmt", "yuv420p", "-r", "30", str(clip)], check=True)
+            clips.append((clip, length))
         # Chain crossfades: each clip overlaps the next by 0.5 s.
         inputs, chain, last, offset = [], "", "0:v", 0.0
-        for c in clips:
+        for c, _ in clips:
             inputs += ["-i", str(c)]
         for i in range(1, len(clips)):
-            offset += 3.0
+            offset += clips[i - 1][1] - 0.5
             chain += f"[{last}][{i}:v]xfade=transition=fade:duration=0.5:offset={offset:.2f}[v{i}];"
             last = f"v{i}"
         cmd = ["ffmpeg", "-loglevel", "error", "-y", *inputs]
@@ -157,6 +187,8 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "add" and len(sys.argv) == 5:
         add(*sys.argv[2:])
+    elif cmd == "clip" and len(sys.argv) == 5:
+        add(None, sys.argv[3], sys.argv[4], video=sys.argv[2])
     elif cmd == "page":
         page()
     elif cmd == "montage":
