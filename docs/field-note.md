@@ -79,6 +79,9 @@ the client and the server only needs collision that agrees with it.
   connection at up to 2200 u/s; client hitches of 6 and 10 packets per server tick; no corrections, no
   "moved wrongly/too quickly", never below a slope. Karambit driven by real mouse/keyboard input.
 - **Production boot:** the built jar + Fabric API on a standalone Fabric 26.3 server.
+- **Capstone playthrough:** a client game test crafts the Karambit in the crafting UI, builds a survival course with
+  it by look + right-click (a 96-block ramp from 12 clicks, a gap, a second ramp), and surfs it twice with keyboard
+  and mouse: 10.6 s, 123 blocks, 680 u/s, full health, 0 server corrections. Recorded as a clip.
 - **Adversarial review:** five reviewers + skeptics found 1 blocker and 13 majors after the first green build;
   all fixed with regression tests. Not verified: other GPUs/OSes, a real network with real latency.
 

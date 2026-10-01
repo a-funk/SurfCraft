@@ -233,3 +233,14 @@ server game tests + all client game tests (single player and dedicated server: 0
 - `Block.shouldRenderFace` compares the neighbour's occluder with our occlusion face, not our quad.
 - After raising the render distance mid-test, `waitForChunksRender` never completes (square vs round area).
 - `devlog.py add` commits first and deploys second; a failed `railway up` can be retried with `devlog.py deploy`.
+
+## Capstone playthrough (2026-10-01)
+`PlaythroughClientTest` (`-PclientTests=playthrough`, part of the default client run) does what a player does,
+in survival with fall damage on, through real keyboard and mouse input only:
+- crafts a crafting table and the Karambit in the crafting UI (only raw materials come from /give);
+- builds a course with the knife by look + right-click: a pillar-hung default module extended 11 times into a
+  96-block two-sided ramp, a start pad, a 5-block gap, a free-placed second ramp, a finish pad with a gold marker;
+- surfs it twice (first person, then third person): 10.6 s, 123 blocks, top 680-681 u/s, health 20/20 throughout,
+  0 server corrections, no "moved wrongly/too quickly", the controller driving every tick.
+- No mod bugs; an offline simulator on the mod's own physics predicted the in-game run (680 u/s, 212 vs 213 ticks).
+- Records a frame per tick: the 28.75 s clip and stills are dev log entries 34-37.
