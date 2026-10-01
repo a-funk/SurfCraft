@@ -5,7 +5,8 @@
   .tools/venv/bin/python tools/devlog.py montage    # devlog/montage.mp4 from every shot (needs ffmpeg)
   .tools/venv/bin/python tools/devlog.py deploy     # publish devlog/ to Railway (project surfcraft-devlog)
 
-Shots are stored as JPEG (at most 1600 px wide) in devlog/shots/, listed in devlog/entries.json.
+Shots are stored as JPEG (at most 1600 px wide) in devlog/shots/, listed in devlog/entries.json. Every `add`
+commits the dev log and publishes it at https://devlog-production-6292.up.railway.app right away.
 """
 import datetime
 import fcntl
@@ -32,9 +33,16 @@ def load():
 
 def add(image, title, caption):
     # Agents in several worktrees add shots to this one log at the same time.
-    with open(ROOT.parent / "devlog" / ".lock", "a") as lock:
+    with open(ROOT / ".lock", "a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         _add(image, title, caption)
+        # Every update goes live right away: commit just the dev log, then publish it.
+        repo = ["git", "-C", str(ROOT.parent)]
+        subprocess.run(repo + ["add", "devlog"], check=False)
+        subprocess.run(repo + ["-c", "user.name=Alex Funk", "-c", "user.email=11507011+a-funk@users.noreply.github.com", "commit", "-q",
+                               "-m", f"Dev log: {title}\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>",
+                               "--", "devlog"], check=False)
+        deploy()
 
 
 def _add(image, title, caption):
@@ -118,7 +126,8 @@ def montage():
 def deploy():
     """Railway serves devlog/ through its Dockerfile (Caddy); the directory is linked to project surfcraft-devlog."""
     page()
-    subprocess.run(["railway", "up", "--service", "devlog", "--detach", "-m", f"dev log: {len(load())} shots"], cwd=ROOT, check=True)
+    subprocess.run(["railway", "up", "--service", "devlog", "--detach", "-m", f"dev log: {len(load())} shots"], cwd=ROOT, check=True,
+                   stdout=subprocess.DEVNULL)
     print(f"{PUBLIC_URL} (live in about a minute)")
 
 
