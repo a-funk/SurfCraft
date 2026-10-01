@@ -92,23 +92,45 @@ figcaption {{ padding: 12px 16px; }} figcaption p {{ margin: 4px 0 0; color: var
 
 
 def montage():
-    """Each shot for 3.5 s with a slow zoom and its title, crossfaded, 1280x720."""
+    """Each shot for 3.5 s with a slow zoom and a title bar, crossfaded, 1280x720 (Homebrew ffmpeg has no drawtext,
+    so Pillow draws the frames)."""
+    from PIL import ImageDraw, ImageFont
+    import um
+    fonts = Path(um.__file__).parent / "fonts"
+    bold, regular = ImageFont.truetype(str(fonts / "SpaceGrotesk-Bold.ttf"), 34), ImageFont.truetype(str(fonts / "SpaceGrotesk-Medium.ttf"), 22)
     entries = load()
+    if not entries:
+        sys.exit("no shots yet")
     out = ROOT / "montage.mp4"
-    with tempfile.TemporaryDirectory() as tmp:
+    tmp_root = ROOT.parent / ".tools" / "tmp"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=tmp_root) as tmp:
         clips = []
         for i, e in enumerate(entries):
+            frame = Image.new("RGB", (1280, 720), (13, 17, 23))
+            img = Image.open(ROOT / e["file"]).convert("RGB")
+            img.thumbnail((1280, 720), Image.LANCZOS)
+            frame.paste(img, ((1280 - img.width) // 2, (720 - img.height) // 2))
+            still = Path(tmp) / f"{i:03d}.png"
+            frame.save(still)
+            # The title bar stays put while the shot slowly zooms behind it.
+            bar = Image.new("RGBA", (1280, 720), (0, 0, 0, 0))
+            d = ImageDraw.Draw(bar)
+            d.rectangle((0, 624, 1280, 720), fill=(0, 0, 0, 170))
+            d.text((28, 634), f"{i + 1:02d}", font=bold, fill=(61, 214, 208))
+            d.text((84, 634), e["title"], font=bold, fill=(255, 255, 255))
+            caption = e["caption"]
+            while d.textlength(caption, font=regular) > 1280 - 84 - 28:
+                caption = caption[: caption.rstrip("…").rfind(" ")] + "…"
+            d.text((84, 680), caption, font=regular, fill=(201, 209, 217))
+            overlay = Path(tmp) / f"{i:03d}-bar.png"
+            bar.save(overlay)
             clip = Path(tmp) / f"{i:03d}.mp4"
-            title = f"{i + 1:02d}  {e['title']}".replace("\\", "\\\\").replace("'", "’").replace(":", "\\:")
-            vf = ("scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=0x0d1117,"
-                  "zoompan=z='min(zoom+0.0006,1.05)':d=105:s=1280x720:fps=30,"
-                  f"drawbox=y=ih-64:w=iw:h=64:color=black@0.55:t=fill,"
-                  f"drawtext=text='{title}':x=24:y=h-46:fontsize=28:fontcolor=white")
-            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-loop", "1", "-i", str(ROOT / e["file"]), "-vf", vf,
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-loop", "1", "-i", str(still), "-loop", "1", "-i", str(overlay),
+                            "-filter_complex", "[0]zoompan=z='min(zoom+0.0005,1.04)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+                            ":d=105:s=1280x720:fps=30[z];[z][1]overlay=0:0",
                             "-t", "3.5", "-pix_fmt", "yuv420p", "-r", "30", str(clip)], check=True)
             clips.append(clip)
-        if not clips:
-            sys.exit("no shots yet")
         # Chain crossfades: each clip overlaps the next by 0.5 s.
         inputs, chain, last, offset = [], "", "0:v", 0.0
         for c in clips:
@@ -119,7 +141,7 @@ def montage():
             last = f"v{i}"
         cmd = ["ffmpeg", "-loglevel", "error", "-y", *inputs]
         cmd += ["-filter_complex", chain.rstrip(";"), "-map", f"[{last}]"] if chain else ["-map", "0:v"]
-        subprocess.run(cmd + ["-pix_fmt", "yuv420p", str(out)], check=True)
+        subprocess.run(cmd + ["-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)], check=True)
     print(out)
 
 
