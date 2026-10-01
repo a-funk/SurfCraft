@@ -93,7 +93,8 @@ record TestRamp(SurfRampBlock block, Direction facing, BlockPos origin, int nU, 
 					.filter(pl -> pl[1] != 0 && Math.abs(pl[1]) != 1).findFirst().orElseThrow();
 			if (first == null) first = slope;
 			for (int k = 0; k < 4; k++) {
-				if (Math.abs(slope[k] - first[k]) > 1e-9) return "%s facing %s: cell %s slope plane %s differs from %s".formatted(
+				// Game tests run millions of blocks out, where d carries ~1e-9 of double rounding: compare relatively.
+				if (Math.abs(slope[k] - first[k]) > 1e-12 * Math.max(1, Math.abs(first[k]))) return "%s facing %s: cell %s slope plane %s differs from %s".formatted(
 						block, facing, c, Arrays.toString(slope), Arrays.toString(first));
 			}
 		}

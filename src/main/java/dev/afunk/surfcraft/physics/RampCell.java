@@ -79,8 +79,8 @@ public record RampCell(int p, int q, int cut) {
 
 	/**
 	 * The cell's exact convex solid as planes {@code nx, ny, nz, d} ({@code n·x <= d}) in block-local
-	 * Minecraft axes, for a cell facing horizontal step {@code (fx, fz)}: the slope plane (unless full) and
-	 * the six axial planes of the solid's tight bounds. The tight axial planes are Source's axial bevels:
+	 * Minecraft axes, for a cell facing horizontal step {@code (fx, fz)}: the six axial planes of the solid's
+	 * tight bounds, then (unless full) the slope plane at index 6. The tight axial planes are Source's axial bevels:
 	 * with the cell's own bounds instead, a swept box would hit phantom geometry above the slope's top edge.
 	 */
 	public double[][] localPlanes(int fx, int fz) {
