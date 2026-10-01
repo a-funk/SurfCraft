@@ -182,3 +182,54 @@ and packaging), each finding reproduced, each lens re-checked by a skeptic. 38 f
 - Packaging (E2/E3/E4) fixed directly: provenance notices + Source SDK license texts in repo and jar, `fabric-api
   >=0.161.0`, contact URL, `local-content` declared as a test input, a real icon.
 - Fixes run as Wave D in three worktrees (physics core / server and controller / blocks and Karambit).
+
+## Wave D fixes (2026-10-01)
+Three fixers in worktrees; every finding reproduced first, fixed at its cause, and covered by a test that failed
+on the old code. Merged main: 50 JUnit (all 24 CS:S replays: worst 0.006836 u, velocity <= 0.000305 u/s) + 37
+server game tests + all client game tests (single player and dedicated server: 0 corrections, 0 rejections).
+### Physics core (A1-A6, B2/C2, C7)
+- CS:S build 11003710 facts, read from `server_srv.so` with objdump:
+  - `TryTouchGroundInQuadrants`: quarter boxes (-x,-y), (+x,+y), (-x,+y), (+x,-y) from min/max(0,
+    mins/maxs), 2 units down, nz >= 0.7; called from CategorizePosition only when vz <= 140 and the full hull found
+    no walkable ground. Now ported: toe grounding matches CS:S.
+  - `ClipVelocity`: k = max(-(in·n), 0) + 1/32 (float, in the binary's order); out = in + n k; if
+    out·n < 0, out -= n (out·n). Ported: ramp replay velocity errors fell 2-12x.
+  - `CM_ClipBoxToBrush` tie rule: the entry numerator is clamped at 0 before comparing, stop at fraction 0.
+    Ported; RampBrushes' seamless slabs now come FIRST (with slabs last, a mid-ramp probe grounds on a cell top).
+    Not ported: the separate axial-box path and fractionleftsolid (no measured difference).
+- Server re-simulation accepts a chord the client's Source trace found clear (corner grazes). Publishing never
+  goes deeper into a brush than the core already is. Moves over 15.4 blocks go to vanilla (C7 cost bound).
+- Landing ticks report onGround to the server, publishing the touchdown point: auto hop no longer skips fall
+  damage (24/24 drop heights deal the same damage with and without jump on the real packet path).
+### Server and controller (B1/C1 blocker, B3-B9, C3-C6)
+- `movement.Surfing`: a server-side surf window (opened by a move within the controller's ramp reach, kept while
+  airborne, closed after 10 ground moves or any teleport). In it: each move packet gets vanilla's single-packet
+  budget from the last accepted position (5 s real-time cap), so client hitches and server stalls keep surfers'
+  speed (6 and 10 packets per tick at 1500/2200 u/s: 0 corrections); e2/e3 apply only there; the client's ground
+  flag survives the server's zero-input doTick (elytra deploys on ramps); the state syncs to tracking clients so
+  other players see surfers' legs settle.
+- Sneaking on ground hands the tick to vanilla (slow walk, edge protection); hand-backs from the ground leave
+  vanilla's resting downward velocity (with 0, the controller and vanilla alternated every tick).
+- Fall distance resets only on slope contact (moved 2 units down, first plane 0.01 < nz < 0.7).
+- Levitation and Slow Falling make the player ineligible; Speed, Jump Boost and honey jump are CS:S-fixed.
+- Slime/bed bounces and block speed factors from move() fold into the core.
+- Long CS:S airtime is not "floating" (vertical step follows CS:S gravity) on dedicated servers.
+- Speedometer one line above the action bar, hidden below 1 u/s.
+### Blocks, Karambit, rendering (D1-D9)
+- Joining continues the plane of the clicked ramp, then the cell's own slice, then the lowest plane on ties.
+- Ramps are in `blocks_motion_no_leaves` (rain, snow, lightning stop on them; full cells suffocate like stone).
+- Occlusion: full cells are cubes; slope cells occlude with thin boxes exactly on their axial faces, and light
+  follows the shape (hollow ramps cast shadows; ramp fields render as fast as stone).
+- Extend reads only the line to the end and the end slice (plan ~0.03 ms at any length; 208-block extends);
+  copy refuses ramps over 32 wide or tall; no build rights, no preview or undo; refusals name their cause
+  ("You are in the way", "Spawn protection").
+- The selection outline traces the exact wedge (Fabric block outline events, vanilla's line styles).
+### Gotchas
+- MinecraftServer.allowFlight() is true except on DedicatedServer: the floating kick only exists there.
+- Payloads sent to `PlayerLookup.tracking(player)` never reach that player's own client.
+- Fabric client game tests start their dedicated server on port 25565 unless told otherwise; parallel runs clash.
+- Packet-path game tests: a ServerPlayer on `new Connection(SERVERBOUND)` + EmbeddedChannel via
+  `PlayerList.placeNewPlayer`; mock players are creative or authoritative and skip the real packet checks.
+- `Block.shouldRenderFace` compares the neighbour's occluder with our occlusion face, not our quad.
+- After raising the render distance mid-test, `waitForChunksRender` never completes (square vs round area).
+- `devlog.py add` commits first and deploys second; a failed `railway up` can be retried with `devlog.py deploy`.
