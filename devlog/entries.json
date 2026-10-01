@@ -52,5 +52,11 @@
   "title": "First surf in game",
   "caption": "The CS:S movement core now drives the player in Minecraft: dropped onto a 51-degree ramp at 788 units/s while holding the strafe key into the slope, the player glides along it. The speedometer above the hotbar shows horizontal speed in units/s.",
   "at": "2026-10-01 02:36"
+ },
+ {
+  "file": "shots/10-the-karambit.jpg",
+  "title": "The Karambit",
+  "caption": "SurfCraft's surf-building tool: a 16x16 CS:GO-style karambit drawn in code, with a claw blade in a Fade finish (gold, purple, pink), a black grip and a finger ring. Zoomed, at 1x to 8x, and in hand next to the hotbar.",
+  "at": "2026-10-01 03:00"
  }
 ]
