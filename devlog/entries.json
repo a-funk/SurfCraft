@@ -106,5 +106,11 @@
   "title": "2200 units/s on a dedicated server",
   "caption": "The same surf run against a real dedicated server over the network, in survival, on the 63-degree ramp at 2200 units/s. 254 blocks along the ramp, plus four fast crossings over an apex: the server corrected nothing and logged no 'moved wrongly'.",
   "at": "2026-10-01 03:43"
+ },
+ {
+  "file": "shots/19-minecraft-adds-nothing-to-the-physics.jpg",
+  "title": "Minecraft adds nothing to the physics",
+  "caption": "Speed every tick of two in-game surf runs (blue) against an offline replay of the same keys and mouse through the physics core alone (orange, dashed). Positions agree exactly, bit for bit: the Minecraft pipeline changes nothing about the CS:S movement.",
+  "at": "2026-10-01 03:43"
  }
 ]
