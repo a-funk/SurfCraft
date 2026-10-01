@@ -1,7 +1,7 @@
 """SurfCraft dev log: numbered screenshots with captions, a gallery page, and a montage at the end.
 
   .tools/venv/bin/python tools/devlog.py add <image> "Title" "One-line caption"
-  .tools/venv/bin/python tools/devlog.py clip <video> "Title" "One-line caption"   # gameplay clip (H.264, poster frame)
+  .tools/venv/bin/python tools/devlog.py clip <video> "Title" "One-line caption" [poster seconds]   # gameplay clip
   .tools/venv/bin/python tools/devlog.py page       # rebuild devlog/index.html
   .tools/venv/bin/python tools/devlog.py montage    # devlog/montage.mp4 from every shot (needs ffmpeg)
   .tools/venv/bin/python tools/devlog.py deploy     # publish devlog/ to Railway (project surfcraft-devlog)
@@ -32,11 +32,11 @@ def load():
     return json.loads(ENTRIES.read_text()) if ENTRIES.exists() else []
 
 
-def add(image, title, caption, video=None):
+def add(image, title, caption, video=None, poster=None):
     # Agents in several worktrees add shots to this one log at the same time.
     with open(ROOT / ".lock", "a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        _add(image, title, caption, video)
+        _add(image, title, caption, video, poster)
         # Every update goes live right away: commit just the dev log, then publish it.
         repo = ["git", "-C", str(ROOT.parent)]
         subprocess.run(repo + ["add", "devlog"], check=False)
@@ -46,7 +46,7 @@ def add(image, title, caption, video=None):
         deploy()
 
 
-def _add(image, title, caption, video=None):
+def _add(image, title, caption, video=None, poster=None):
     entries = load()
     SHOTS.mkdir(parents=True, exist_ok=True)
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:48]
@@ -59,7 +59,8 @@ def _add(image, title, caption, video=None):
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(video), "-vf", "scale=1280:-2", "-c:v", "libx264", "-crf", "24",
                         "-preset", "medium", "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(clip)], check=True)
         image = SHOTS / name
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", f"{duration(clip) / 2:.2f}", "-i", str(clip), "-frames:v", "1", str(image)], check=True)
+        at = float(poster) if poster is not None else duration(clip) / 2
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", f"{at:.2f}", "-i", str(clip), "-frames:v", "1", str(image)], check=True)
         entry["video"] = f"clips/{clip.name}"
     img = Image.open(image).convert("RGB")
     if img.width > 1600:
@@ -149,7 +150,7 @@ def montage():
             bar.save(overlay)
             clip = Path(tmp) / f"{i:03d}.mp4"
             if "video" in e:
-                length = min(12.0, duration(ROOT / e["video"]))
+                length = min(30.0, duration(ROOT / e["video"]))  # gameplay plays in full, up to 30 s
                 subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(ROOT / e["video"]), "-loop", "1", "-i", str(overlay),
                                 "-filter_complex", "[0]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,"
                                 "fps=30,setsar=1[v];[v][1]overlay=0:0", "-t", f"{length:.2f}", "-an", "-pix_fmt", "yuv420p", "-r", "30",
@@ -187,8 +188,8 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "add" and len(sys.argv) == 5:
         add(*sys.argv[2:])
-    elif cmd == "clip" and len(sys.argv) == 5:
-        add(None, sys.argv[3], sys.argv[4], video=sys.argv[2])
+    elif cmd == "clip" and len(sys.argv) in (5, 6):
+        add(None, sys.argv[3], sys.argv[4], video=sys.argv[2], poster=sys.argv[5] if len(sys.argv) == 6 else None)
     elif cmd == "page":
         page()
     elif cmd == "montage":
