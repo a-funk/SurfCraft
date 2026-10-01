@@ -1,0 +1,29 @@
+# gradle
+.gradle/
+build/
+out/
+classes/
+
+# ide
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# macos
+*.DS_Store
+
+# fabric dev runs (worlds, logs, screenshots)
+run/
+
+# local third-party game content (maps, geometry extracted from them): never commit
+local-content/
+
+# java
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr

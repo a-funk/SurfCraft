@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "surfcraft",
+	"version": "${version}",
+	"name": "SurfCraft",
+	"description": "Counter-Strike: Source surf ramps for Minecraft: craftable ramp blocks that join into ramps of any size, and CS:S air-strafe and ramp-clip movement ported from the engine.",
+	"authors": [
+		"Alex Funk"
+	],
+	"license": "All-Rights-Reserved",
+	"icon": "assets/surfcraft/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"dev.afunk.surfcraft.SurfCraft"
+		],
+		"client": [
+			"dev.afunk.surfcraft.client.SurfCraftClient"
+		]
+	},
+	"mixins": [
+		"surfcraft.mixins.json",
+		{
+			"config": "surfcraft.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
