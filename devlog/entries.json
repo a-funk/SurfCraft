@@ -58,5 +58,11 @@
   "title": "The Karambit",
   "caption": "SurfCraft's surf-building tool: a 16x16 CS:GO-style karambit drawn in code, with a claw blade in a Fade finish (gold, purple, pink), a black grip and a finger ring. Zoomed, at 1x to 8x, and in hand next to the hotbar.",
   "at": "2026-10-01 03:00"
+ },
+ {
+  "file": "shots/11-getting-the-sprite-to-read-as-a-karambit.jpg",
+  "title": "Getting the sprite to read as a karambit",
+  "caption": "Before and after: the first tries drew a flat arc with a 1-pixel ring. The final sprite has a hooked claw blade with a dark outline (like vanilla swords) and a ring with a clear hole.",
+  "at": "2026-10-01 03:00"
  }
 ]
