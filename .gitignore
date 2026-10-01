@@ -33,3 +33,6 @@ replay_*.log
 
 # project-local tooling (uv venv with universal-modder um + matplotlib, uv cache)
 .tools/
+
+# python bytecode
+__pycache__/
