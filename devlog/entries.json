@@ -136,5 +136,11 @@
   "title": "Fixed: bunny hopping dodged fall damage",
   "caption": "Auto hop landed and jumped within one tick 7 times in 10, so the server never saw the landing. Now that tick reports the touchdown: 221 of 221 drops hurt as without jump.",
   "at": "2026-10-01 06:05"
+ },
+ {
+  "file": "shots/24-speedometer-off-the-action-bar.jpg",
+  "title": "Speedometer off the action bar",
+  "caption": "It was drawn on the action-bar line, garbling Karambit messages, and read 0 u/s at rest beside a ramp. Now it sits one line above and hides below 1 u/s.",
+  "at": "2026-10-01 06:18"
  }
 ]
