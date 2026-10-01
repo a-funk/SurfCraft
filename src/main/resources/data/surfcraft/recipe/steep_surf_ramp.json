@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "S": "minecraft:smooth_stone"
+  },
+  "pattern": [
+    "S  ",
+    "S  ",
+    "SS "
+  ],
+  "result": {
+    "count": 4,
+    "id": "surfcraft:steep_surf_ramp"
+  }
+}

@@ -17,6 +17,21 @@ loom {
 	}
 }
 
+// Game tests live in their own source set and mod (src/gametest), so they never ship in the mod jar.
+// runGameTest (server tests, part of check/build) and runClientGameTest (opens a client window, run on demand).
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		enableGameTests = true
+		enableClientGameTests = true
+		eula = true
+	}
+}
+
+loom.runs.named("gameTest") {
+	vmArg "-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('gametest/server-tests.xml').get().asFile}"
+}
+
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
