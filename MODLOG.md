@@ -120,3 +120,47 @@ with it and fall damage that ignores ramp contact.
 - `devlog/` (screenshots + `index.html`), published with `tools/devlog.py deploy` to Railway project
   `surfcraft-devlog`: https://devlog-production-6292.up.railway.app
 - Homebrew's python3 is broken on this Mac (pyexpat symbol mismatch; uv refuses it): use `.tools/venv/bin/python`.
+
+## Wave B results (2026-10-01)
+### Movement integration (`movement`, `client.SurfController`, mixins a1-a3, b1, c1, d1, e1-e3)
+- Pure-Java `TickDriver` runs a 50 ms Minecraft tick: simplified CheckStuck, 0.015 s substeps with a time
+  accumulator, per-substep yaw interpolated across the tick, and the published point swept (exactly, sliding)
+  to the tick boundary. `BrushWorld` builds brushes in a local frame (anchor rebased past 8192 units): vanilla
+  boxes (each with a touching slope plane as a bevel), entity colliders, world border, then `RampBrushes` last.
+- Verified in survival with fall damage on, single player and an in-process DedicatedServer over a real
+  connection: 0 server corrections, no "moved wrongly"/"moved too quickly", never below a slope (worst clearance
+  0.000132 blocks on 2:1), worst speed drop in surf contact 1.3%, health unchanged. 2200 u/s on 2:1 and
+  1500 u/s on 5:4 on the dedicated server. Integration oracle: an offline replay of the recorded inputs through
+  the same driver matches every published position bit for bit (0.0 blocks over 64-89 ticks).
+- Air strafe D + turn right / A + turn left gain to 277.6 u/s; the wrong combination doesn't. Auto hop keeps
+  500 u/s over 4 hops. Hand-back to vanilla after the 10-tick ground window; vanilla walking 4.317 b/s.
+- `ServerAgreementTest`: 300 random surf runs, worst server re-simulation error 0.000000 blocks (limit 0.25).
+- Bugs found by the in-game oracle, each fixed at its cause with a test:
+  1. Frozen after teleport: players stand exactly on block tops, which Source counts as solid -> CheckStuck nudge.
+  2. Silent server rejections: the surf repo trace's Quake 2 entry sentinel (-1) let a hull creep up to 1/32
+     unit into a plane; `isEntityCollidingWithAnythingNew` then rejects without logging -> Source's
+     `NEVER_UPDATED` (-9999). All 23 recording replays are identical before and after. (The browser port in
+     /Users/funk/code/sandbox/surf still uses -1.)
+  3. Sinking through ramps: exact sweeps stopped a box a tolerance inside the slope -> tolerance only decides a
+     hit; boxes stop at contact (3000-press regression test).
+  4. Any damage (markHurt) synced the server's zero-input velocity and stopped surfers dead -> e3 sets the
+     server velocity to the known movement before damage near ramps or when fast.
+  5. The post-surf window survived teleports -> a position change restarts the controller.
+- Gotchas: `ClientLevel.hasChunk` always returns true (use `getChunkSource().hasChunk`); Fabric's `waitFor`
+  runs client ticks of its own (track positions with `ClientTickEvents.END_CLIENT_TICK`); client game tests
+  hang with the display asleep (SDL_GL_SwapWindow blocks): `caffeinate -d -u`.
+- Known limits: other clients see a surfer's legs swing (surf state not synced); the server's lift fallback
+  near ramps is looser than vanilla's 0.6 step; duck is not ported (sneak only shrinks the box).
+### Karambit (`karambit.SurfModule`, `ModulePlacer`, `KarambitItem`, `client.KarambitPreview`)
+- Sneak + use a ramp copies its connected chunk (bounding box <= 32/axis) into a `surfcraft:module` data
+  component (palette + runs, canonical frame: z = length axis, +z = forward). Use on a ramp extends it past the
+  end you look toward if the joint matches exactly; use elsewhere places the module facing your look; sneak + use
+  air undoes (8 per player). All or nothing: room, build height, border, spawn protection, entities, and in
+  survival every item (one per non-air cell). Default module: two-sided 51° ramp 8x5x8, 224 blocks.
+- Preview: `Gizmos.cuboid` from `ClientTickEvents.END_CLIENT_TICK`, green fits / red blocked with cells marked.
+- Recipe: 2 iron ingots + stick, diagonal. Sprite: `tools/draw-karambit.py` (Fade claw, black grip, ring).
+- Gotchas: `tp ... facing` aims from the feet; client-only `flying` is reset on the ground (set it on the server);
+  `getFacingAxis` uses yHeadRot, which mock players never set; Fabric's default test structure is 8x8x8.
+### Merged main
+- `./gradlew build`: 44 JUnit (0 skipped with local-content) + 21 server game tests. `./gradlew
+  runClientGameTest`: showcase, karambit, surf, server all pass (2m 6s).
