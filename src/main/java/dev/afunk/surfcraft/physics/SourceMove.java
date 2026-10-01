@@ -17,22 +17,23 @@ public final class SourceMove {
 	}
 
 	/**
-	 * CS:S leaves a 1/32 unit/s outward component after clipping, measured on both an axial wall and an oblique
-	 * surf plane in build 11003710. The dot products and component writes are floats in Source axis order;
-	 * doubles accumulate different ramp exit velocities.
+	 * CS:S's ClipVelocity (server_srv.so build 11003710, overbounce 1, no redirect), in its float operations and order:
+	 * the part of the velocity into the plane is removed and 1/32 unit/s is added along the normal, so velocity already
+	 * leaving the plane keeps its outward part (plus 1/32); then a result still moving into the plane is pushed back
+	 * onto it.
 	 */
 	public static V3 clipVelocity(V3 velocity, V3 normal) {
 		float x = (float) velocity.x(), y = (float) velocity.y(), z = (float) velocity.z();
-		double nx = normal.x(), ny = normal.y(), nz = normal.z();
-		float backoff = (float) (x * nx) + (float) (y * ny) + (float) (z * nz);
-		x -= (float) (nx * backoff);
-		y -= (float) (ny * backoff);
-		z -= (float) (nz * backoff);
-		float adjust = (float) (x * nx) + (float) (y * ny) + (float) (z * nz) - 1f / 32;
+		float nx = (float) normal.x(), ny = (float) normal.y(), nz = (float) normal.z();
+		float k = Math.max(-(y * ny + x * nx + nz * z), 0f) + 1f / 32;
+		y += ny * k;
+		x += nx * k;
+		z += nz * k;
+		float adjust = ny * y + nx * x + nz * z;
 		if (adjust < 0) {
-			x -= (float) (nx * adjust);
-			y -= (float) (ny * adjust);
-			z -= (float) (nz * adjust);
+			x -= nx * adjust;
+			y -= ny * adjust;
+			z -= nz * adjust;
 		}
 		return new V3(x, y, z);
 	}

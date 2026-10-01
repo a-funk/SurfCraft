@@ -202,7 +202,8 @@ public final class SurfController {
 	 */
 	private void publish(TickDriver d) {
 		Vec3 exact = BrushWorld.toMinecraft(d.published, anchor).subtract(player.position());
-		boolean grounded = d.core.grounded;
+		// A tick that landed reports ground even if auto hop left it again (it then publishes the touchdown): fall damage.
+		boolean grounded = d.core.grounded || d.landed;
 		Vec3 request = grounded ? new Vec3(exact.x, Math.min(exact.y, 0) - 1e-3, exact.z) : exact;
 		SurfPlayer trust = (SurfPlayer) player;
 		trust.surfcraft$setTrust(exact);

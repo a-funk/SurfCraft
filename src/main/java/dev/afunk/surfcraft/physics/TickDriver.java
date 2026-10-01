@@ -17,7 +17,10 @@ public final class TickDriver {
 	public double lag;
 	/** Source yaw at the last tick boundary, in degrees; NaN until the first tick. */
 	public double yaw = Double.NaN;
-	/** The feet swept forward to the tick boundary: the position Minecraft shows. */
+	/**
+	 * The feet swept forward to the tick boundary: the position Minecraft shows. On a tick that {@link #landed} and ended
+	 * airborne again, the touchdown instead, carried along the ground to the tick boundary's spot.
+	 */
 	public V3 published = V3.ZERO;
 	/** Some substep this tick touched a surf ramp (0.01 < normal z < 0.7). */
 	public boolean surfed;
@@ -25,6 +28,12 @@ public final class TickDriver {
 	public boolean wall;
 	/** Some substep this tick hit a ceiling. */
 	public boolean ceiling;
+	/**
+	 * Some substep this tick landed: it ended on walkable ground after the one before it ended airborne. With auto hop the
+	 * next substep can already jump, so the tick may end airborne; the landing is still this tick's (CS:S takes fall damage
+	 * in the landing command, vanilla on the tick that lands).
+	 */
+	public boolean landed;
 	/** The hull started this tick inside something no nudge could get it out of. */
 	public boolean stuck;
 
@@ -63,16 +72,19 @@ public final class TickDriver {
 	 */
 	public void tick(Config c, double forward, double side, boolean jump, double yawNow, V3 hull, List<Brush> world) {
 		double from = Double.isNaN(yaw) ? yawNow : yaw, turn = Math.IEEEremainder(yawNow - from, 360);
-		surfed = wall = ceiling = false;
+		surfed = wall = ceiling = landed = false;
 		stuck = !unstick(world, hull);
 		if (stuck) {
 			published = core.origin;
 			return;
 		}
 		lag += TICK;
+		V3 touchdown = null;
 		while (lag >= DT) {
 			lag -= DT;
+			boolean airborne = !core.grounded;
 			core.tick(c, forward, side, from + turn * (1 - lag / TICK), jump, DT, hull, world);
+			if (airborne && core.grounded && touchdown == null) touchdown = core.origin;
 			surfed |= core.surfNormal != null;
 			for (HullTrace h : core.contacts) {
 				double nz = h.normal().z();
@@ -81,21 +93,31 @@ public final class TickDriver {
 			}
 		}
 		yaw = yawNow;
+		landed = touchdown != null;
 		published = sweep(world, core.origin, core.velocity.scale(lag), hull);
+		// Landed and hopped again within the tick: publish the touchdown, carried along the ground to the tick boundary's
+		// spot, so the tick's packet is the landing (on the ground, after the whole fall), as vanilla's would be.
+		if (landed && !core.grounded) published = sweep(world, touchdown, new V3(published.x() - touchdown.x(), published.y() - touchdown.y(), 0), hull);
 	}
 
 	/** Penetration the publishing sweep ignores, in units (it stops where the hull touches): below the server's TOL. */
 	static final double PUBLISH_TOL = 1e-5;
+	/**
+	 * A start this far inside a brush (units) counts as touching it: float origins put the core up to half a float ulp
+	 * (2.4e-4 units below 8192) inside a face it reached without crossing, and the sweep must not go deeper from there.
+	 */
+	static final double PUBLISH_SLACK = 1e-3;
 
 	/**
-	 * The feet moved by {@code move}, sliding along whatever the hull touches on the way. This uses the exact sweep, not
-	 * Source's trace: a hull resting within DIST_EPSILON of a ramp (as surfing hulls do) gets a hit at fraction 0 from
-	 * Source's trace for any move into it, which would freeze the extrapolation; the exact sweep slides along instead.
+	 * The feet moved by {@code move}, sliding along whatever the hull touches on the way and never deeper into a brush than
+	 * it started. This uses the exact sweep, not Source's trace: a hull resting within DIST_EPSILON of a ramp (as surfing
+	 * hulls do) gets a hit at fraction 0 from Source's trace for any move into it, which would freeze the extrapolation;
+	 * the exact sweep slides along instead.
 	 */
 	public static V3 sweep(List<Brush> world, V3 feet, V3 move, V3 hull) {
 		V3 lift = new V3(0, 0, hull.z()), centre = feet.add(lift), rest = move;
 		for (int bump = 0; bump < 4 && !rest.isZero(); bump++) {
-			ExactCollide.Hit hit = ExactCollide.first(world, centre, centre.add(rest), hull, PUBLISH_TOL);
+			ExactCollide.Hit hit = ExactCollide.first(world, centre, centre.add(rest), hull, PUBLISH_TOL, PUBLISH_SLACK);
 			centre = centre.add(rest.scale(hit.fraction()));
 			if (hit.fraction() == 1) break;
 			rest = rest.scale(1 - hit.fraction());
@@ -132,6 +154,7 @@ public final class TickDriver {
 		d.surfed = surfed;
 		d.wall = wall;
 		d.ceiling = ceiling;
+		d.landed = landed;
 		d.stuck = stuck;
 		return d;
 	}

@@ -9,7 +9,7 @@ import java.util.TreeMap;
 /**
  * Source brushes for placed ramp cells that surf like one brush per ramp: no rampbugs at the cells' seams.
  *
- * <p>Source's box trace (CM_ClipBoxToBrush, ported exactly) has a dead zone about DIST_EPSILON wide at seams, and
+ * <p>Source's box trace ({@link SourceHull}) has a dead zone about DIST_EPSILON wide at seams between brushes, and
  * CS:S rampbugs on multi-brush ramps the same way. With one brush per cell, about one 300-tick surf in six on a
  * 5-block ramp is clipped or stopped mid-ramp. The brushes here keep the true solid but leave no seams where the
  * hull slides:
@@ -18,11 +18,11 @@ import java.util.TreeMap;
  * <li>Across the slope the cells must stay separate (their union need not be convex), and where the hull's
  * contact edge crosses such a seam the cell being left already counts the hull as gone (its leave fraction is
  * pulled back by the epsilon) while the cell being entered reports its internal axial face. So every run of cut
- * cells along one slope also gets a thin slab under the slope with no seams of its own. Slabs come last: as in
- * Source, a later brush wins when its raw entry fraction is below an earlier one's clamped zero. The slab is the
- * only solid added: where the slope crosses the block grid at a corner whose full cell below is missing (a
- * ramp of cut cells only), the cut cells meet in a single point and the slab bridges it with a sliver at most
- * {@link #SLAB} deep under that corner.
+ * cells along one slope also gets a thin slab under the slope with no seams of its own. Slabs come first: the
+ * trace keeps the earlier brush when two are entered at fraction 0, so the slab's slope wins over a cell's internal
+ * face. The slab is the only solid added: where the slope crosses the block grid at a corner whose full cell below
+ * is missing (a ramp of cut cells only), the cut cells meet in a single point and the slab bridges it with a sliver
+ * at most {@link #SLAB} deep under that corner.
  * <li>A full cell whose top-front corner lies on the slope reports its axial faces when the hull rides over that
  * corner within the epsilon. It gets the slope plane as a bevel; the cube lies under that plane, so its expanded
  * shape is unchanged.
@@ -48,10 +48,15 @@ public final class RampBrushes {
 		long plane() {
 			return cell.cut() + (long) cell.p() * u() + (long) cell.q() * y;
 		}
+
+		/** The slope this cell lies on. */
+		public Slope slope() {
+			return new Slope(fx, fz, cell.p(), cell.q(), plane());
+		}
 	}
 
 	/** One slope: the facing, p:q and its plane {@code p*u + q*y <= plane} in cell units. */
-	private record Slope(int fx, int fz, int p, int q, long plane) {
+	public record Slope(int fx, int fz, int p, int q, long plane) {
 	}
 
 	/** A prism along w: a cell at (u, y), or (cut 0) a slab over the slope's u-span [from, to]. */
@@ -69,15 +74,10 @@ public final class RampBrushes {
 			if (r.full()) continue;
 			long plane = c.plane();
 			double from = Math.max(c.u(), (double) (plane - (long) r.q() * (c.y() + 1)) / r.p()), to = Math.min(c.u() + 1, (double) (plane - (long) r.q() * c.y()) / r.p());
-			spans.computeIfAbsent(slope(c, plane), k -> new TreeMap<>()).computeIfAbsent(c.w(), k -> new ArrayList<>()).add(new double[] {from, to});
+			spans.computeIfAbsent(c.slope(), k -> new TreeMap<>()).computeIfAbsent(c.w(), k -> new ArrayList<>()).add(new double[] {from, to});
 		}
 		Map<Piece, List<Integer>> pieces = new LinkedHashMap<>();
-		for (Placed c : cells) {
-			Slope touched = slope(c, c.plane());
-			boolean bevel = c.cell().full() && spans.containsKey(touched) && spans.get(touched).containsKey(c.w());
-			pieces.computeIfAbsent(new Piece(touched, c.cell().cut(), c.u(), c.y(), bevel, 0, 0), k -> new ArrayList<>()).add(c.w());
-		}
-		// Slabs after the cells: each maximal run of touching spans in a slice.
+		// Slabs before the cells: each maximal run of touching spans in a slice.
 		for (Map.Entry<Slope, Map<Integer, List<double[]>>> e : spans.entrySet()) {
 			for (Map.Entry<Integer, List<double[]>> slice : e.getValue().entrySet()) {
 				List<double[]> s = slice.getValue();
@@ -93,6 +93,11 @@ public final class RampBrushes {
 				pieces.computeIfAbsent(new Piece(e.getKey(), 0, 0, 0, false, from, to), k -> new ArrayList<>()).add(slice.getKey());
 			}
 		}
+		for (Placed c : cells) {
+			Slope touched = c.slope();
+			boolean bevel = c.cell().full() && spans.containsKey(touched) && spans.get(touched).containsKey(c.w());
+			pieces.computeIfAbsent(new Piece(touched, c.cell().cut(), c.u(), c.y(), bevel, 0, 0), k -> new ArrayList<>()).add(c.w());
+		}
 		// Each piece's consecutive slices become one prism.
 		List<Brush> out = new ArrayList<>();
 		for (Map.Entry<Piece, List<Integer>> e : pieces.entrySet()) {
@@ -106,10 +111,6 @@ public final class RampBrushes {
 			}
 		}
 		return out;
-	}
-
-	private static Slope slope(Placed c, long plane) {
-		return new Slope(c.fx(), c.fz(), c.cell().p(), c.cell().q(), plane);
 	}
 
 	/** A piece from w0 to w1, built in ramp axes (u along the facing, y up, w across), as a Source brush. */

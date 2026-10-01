@@ -1,15 +1,16 @@
 # Minecraft 26.3 player movement: client pipeline, server validation, SurfCraft hook points
 
 Research notes for replacing the local player's movement with the CS:S surf controller near ramps.
-Everything here was read from the decompiled 26.3 sources (Mojang names) in `local-content/decomp/`
-(`~/minecraft-26.3-decomp` is a symlink to it): `common/`, `client/`, and Fabric API 0.161.0+26.3 in
-`fabric-api/`. File paths are relative to `common/` or `client/`; line numbers are from that decomp.
+Everything here was read from the decompiled 26.3 sources (Mojang names) in `local-content/decomp/`:
+`common/`, `client/`, and Fabric API 0.161.0+26.3 in `fabric-api/`. File paths are relative to
+`common/` or `client/`; line numbers are from that decomp.
 Method descriptors and call-site owners in section 9 were checked with `javap` against the jars in
 `.gradle/loom-cache/minecraftMaven/`. Behaviour is paraphrased; no decompiled bodies are copied.
 
 Class chain: `Entity` > `LivingEntity` > `Avatar` > `Player` > `AbstractClientPlayer` > `LocalPlayer`
 (and `RemotePlayer`); `Player` > `ServerPlayer`. Units: blocks, ticks (50 ms); "b/t" = blocks per tick.
-Surf top speed 3500 u/s = 88.9 m/s = **4.445 b/t** (39.37 u per block).
+CS:S clamps each velocity axis to 3500 u/s (4.445 b/t; 39.37 u per block), so a surfer's speed reaches
+3500√3 = 6062 u/s = **7.70 b/t** (4950 u/s, 6.29 b/t, with both horizontal axes at the cap).
 
 ## 0. The short version
 
@@ -23,9 +24,10 @@ Surf top speed 3500 u/s = 88.9 m/s = **4.445 b/t** (39.37 u per block).
   It rejects (teleports back) when the re-simulated end is more than 0.25 blocks from the target
   **horizontally** (vertical error is never checked: the guard on `yDist` is always true), or when the
   new box overlaps a collision shape the old box did not.
-- "Moved too quickly" allows 100 squared blocks per packet, counted from the start of the server tick:
-  one 4.445-block packet passes; at top speed, six or more packets in one server tick fail. The
-  singleplayer owner is exempt.
+- "Moved too quickly" allows 100 squared blocks per packet, counted from the start of the server tick,
+  and from the 6th packet in one server tick the budget is a single packet's again. One packet passes up
+  to 10 b/t, faster than any CS:S speed; bursts fail far lower (4.5): six packets in one server tick
+  above 1312 u/s. The singleplayer owner is exempt.
 - `ServerPlayer` does run vanilla `travel()` (zero input) every server tick in `doTick()`, but the
   position is snapped back afterwards. Its `deltaMovement` and collision flags survive.
 - Server fall damage is driven by the client's `onGround` flag and each packet's y delta through
@@ -510,7 +512,9 @@ Semantics, from the server's acceptance rule (section 4):
   1. **Chord first.** Sweep the hull straight along the whole movement against all colliders. If it is
      free, return the movement unchanged. A client surfing a ramp ends each tick on or above one plane,
      so the chord between two such points stays above it: no hit, no spurious `onGround`, and no server
-     footsteps for other players.
+     footsteps for other players. For a client's move the server is at least as lenient as the client's
+     own trace: Source's trace lets a hull graze an edge within DIST_EPSILON, so a chord that trace
+     passes, or that the hull shrunk by DIST_EPSILON clears, is accepted too.
   2. **Otherwise resolve like vanilla:** per-axis sweeps in `axisStepOrder` (Y first) with vanilla's
      step-up, against exact brushes plus vanilla boxes. Y-first sweeps match vanilla and the server's
      leniency: the server ignores the y error and checks only 0.25 blocks horizontally.
@@ -659,22 +663,32 @@ in section 9.
 
 ### 4.5 What could reject positions 4+ blocks apart
 
-- **Moved too quickly.** One packet of 4.445 blocks is 19.8 <= 100 and passes. The per-packet ceiling
-  is sqrt(100) = 10 b/t (17.3 when gliding).
-  - Bursts: n packets in one server tick give `(4.445 n)^2` against `100 n`. That passes for n <= 5
-    (494 < 500) and **fails for n >= 6**, because the budget resets to 100.
-  - So a server stall of 6 or more client ticks at top speed teleports the player back. It does not
-    apply to the singleplayer owner or with `/gamerule player_movement_check false`.
-  - `expectedDist` (server `deltaMovement^2`) is subtracted, which only loosens the check.
+- **Moved too quickly.** A packet fails when its distance from the position at the start of the server
+  tick, squared, exceeds `100 x deltaPackets` (300 when gliding). `deltaPackets` counts the packets
+  handled since that tick began and is **reset to 1 once it passes 5**. `expectedDist` (server
+  `deltaMovement^2`) is subtracted, which only loosens the check.
+  - At a steady v b/t, the k-th packet in one server tick fails above 10/√k b/t for k <= 5, and above
+    10/k b/t from the 6th on. A single packet passes up to 10 b/t (17.3 gliding), more than any CS:S
+    speed (7.70 b/t).
+  - k = 2: 5568 u/s; 3: 4546; 4: 3937; 5: 3521. The per-axis cap allows 6062 u/s, so all are reachable.
+  - k = 6: 1312 u/s; 8: 984; 10: 787; 20 (a one-second stall): 394. Packets queue up during a server
+    stall or a client hitch of 300 ms or more, so this teleports surfers back at ordinary speeds, with
+    zero velocity (Wave C review, B1 and C1).
+  - Exempt: the singleplayer owner, and everyone under `/gamerule player_movement_check false`. Turning
+    the gamerule off is not the answer for surf servers: it lifts the only per-packet distance bound for
+    every client. The mod has to give surfers a budget their speed fits.
 - **Moved wrongly** has no distance limit. It fails only when the re-simulation disagrees by more than
   0.25 blocks horizontally.
 - **`isEntityCollidingWithAnythingNew`** only checks the end box.
 - **Nothing else** in `move`/`collide` caps distance. The collision query grows with the delta; the
-  fall-reset clip is capped at 8 blocks.
+  fall-reset clip is capped at 8 blocks. SurfCraft's collide hook leaves moves longer than 15.4 blocks
+  (twice the controller's top speed per tick) to vanilla: the region its re-simulation may lift through
+  grows with the square of the move.
 - **Tracking to other clients.** The player update interval is 2 ticks. Deltas over 8 blocks per axis
   (8.9 at top speed) fall back to full-precision `ClientboundEntityPositionSyncPacket`, which is fine.
-- **The floating kick** needs 80 ticks of not descending with only air around, so it never triggers
-  next to ramps.
+- **The floating kick** needs more than 80 consecutive ticks of not descending with nothing within
+  0.55 blocks below. CS:S gravity (800 u/s², no drag) keeps a vertical launch above about 3175 u/s
+  rising that long, so such a launch is kicked on a dedicated server (Wave C review, B7).
 
 ## 5. Fall damage pipeline
 
@@ -927,9 +941,12 @@ Notes on each:
 3. `P1` is the core state swept to the tick boundary; `exact = P1 - position()`.
 4. Set the trust payload to `exact` and call `player.move(MoverType.SELF, request)`, then clear the
    payload.
-   - If Source-grounded: `request = (exact.x, min(exact.y, 0) - 1e-3, exact.z)`. This ground probe makes
-     `move` see a blocked downward component, so `verticalCollisionBelow` and `onGround` are true inside
-     `move`. Footsteps, fall-damage landing and the supporting block then follow the CS:S ground state.
+   - If Source-grounded, or a substep landed this tick: `request = (exact.x, min(exact.y, 0) - 1e-3,
+     exact.z)`. This ground probe makes `move` see a blocked downward component, so
+     `verticalCollisionBelow` and `onGround` are true inside `move`. Footsteps, fall-damage landing and the
+     supporting block then follow the CS:S ground state. Auto hop can land and jump again within one
+     tick; such a tick publishes the touchdown (carried along the ground to the tick boundary's spot), so
+     its packet is the landing, on the ground and after the whole fall, as vanilla's would be.
    - Otherwise `request = exact`, which gives `onGround = false`.
    - `LocalPlayer.move` then adds walk distance (bobbing) and runs auto-jump (off, via a3).
 5. After `move`, overwrite what `move` cannot know:
@@ -967,8 +984,10 @@ More traps:
 - **Log oracle.** The server warnings `moved wrongly!` and `moved too quickly!` appear in
   `run/logs/latest.log`. `is sending move packets too frequently` is debug level, so it only shows in
   the debug log.
-- **Server lag.** 6 or more client ticks queued inside one server tick at top speed trigger "moved too
-  quickly" (4.5). Consider `/gamerule player_movement_check false` on surf servers.
+- **Server lag.** Move packets that queue up during a server stall or a client hitch are handled in
+  one server tick, and from the 6th the budget is a single packet's: six packets fail above 1312 u/s,
+  and above 3521 u/s fewer do (4.5). The player is teleported back with zero velocity. Turning off
+  `player_movement_check` is not the fix (it unbounds every client); the mod must budget surfers.
 - **Elytra.** With an elytra worn, pressing jump in mid-air starts gliding (`LocalPlayer.aiStep` step 9)
   and drops out of the controller.
 - **Two threads in singleplayer.** The client and integrated server threads both run the common
@@ -983,5 +1002,6 @@ More traps:
 - Whether the controller's hull should become the player's MC dimensions, or the hook should sweep the
   CS:S hull while vanilla keeps 0.6 x 1.8, is a design decision. The 0.13 to 0.21 block gap between the
   MC box and the plane affects how the player model looks on ramps.
-- Nothing here was run: no Gradle and no game, by instruction. Section 4's thresholds come from the
-  code and need one survival-mode check in the dev client.
+- These notes were first written from the code alone. Section 4.5's burst thresholds have since been
+  measured (Wave C review: server game tests feeding a survival player real move packets, 6 packets
+  pass at 1310 u/s and fail at 1315).

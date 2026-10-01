@@ -11,7 +11,8 @@ import java.util.TreeSet;
  * <p>The straight move is kept whenever the swept box stays clear: a client surfing a ramp ends every tick on or above
  * one plane, so the chord between two of its published positions is clear and the server's re-simulation lands exactly
  * on the client's target. Otherwise the move resolves like vanilla, axis by axis (up/down first, then the longer
- * horizontal axis), with vanilla's step-up. The server's re-simulation of a client's move may also lift the box over a
+ * horizontal axis), with vanilla's step-up. The server's re-simulation of a client's move is at least as lenient as the
+ * client's own trace (Source's trace lets a box graze an edge within DIST_EPSILON), and may also lift the box over a
  * convex edge it crossed within the tick (a chord between two slopes of an A-frame passes under the apex).
  */
 public final class ExactCollide {
@@ -28,9 +29,10 @@ public final class ExactCollide {
 	/**
 	 * Where the box (centre, half extents) moving from {@code from} to {@code to} first touches a brush it would otherwise
 	 * cross more than {@code tol} into (and did not start inside). The tolerance only decides whether there is a hit: the
-	 * box stops where it touches, never inside, or a later move could start "inside" the brush and pass through it.
+	 * box stops where it touches, never inside, or a later move could start "inside" the brush and pass through it. A start
+	 * at most {@code slack} inside a brush counts as touching it: the box may slide along or back out, not go deeper.
 	 */
-	public static Hit first(List<Brush> world, V3 from, V3 to, V3 half, double tol) {
+	public static Hit first(List<Brush> world, V3 from, V3 to, V3 half, double tol, double slack) {
 		double sx = from.x(), sy = from.y(), sz = from.z(), ex = to.x(), ey = to.y(), ez = to.z();
 		double hx = half.x(), hy = half.y(), hz = half.z();
 		double minX = Math.min(sx, ex) - hx, maxX = Math.max(sx, ex) + hx, minY = Math.min(sy, ey) - hy, maxY = Math.max(sy, ey) + hy;
@@ -41,22 +43,30 @@ public final class ExactCollide {
 		for (Brush brush : world) {
 			V3 lo = brush.min(), hi = brush.max();
 			if (minX >= hi.x() || maxX <= lo.x() || minY >= hi.y() || maxY <= lo.y() || minZ >= hi.z() || maxZ <= lo.z()) continue;
+			double t = tol;
+			if (slack > 0) {
+				// How far the start is outside the brush (negative: inside, by the shallowest face).
+				double out = Double.NEGATIVE_INFINITY;
+				for (Plane p : brush.planes())
+					out = Math.max(out, sx * p.nx() + sy * p.ny() + sz * p.nz() - p.d() - Math.abs(p.nx()) * hx - Math.abs(p.ny()) * hy - Math.abs(p.nz()) * hz);
+				if (out < -tol && out >= -slack) t = tol - out;
+			}
 			double enter = 0, leave = 1, touch = 0;
 			Plane entered = null;
 			boolean startsOutside = false;
 			for (Plane p : brush.planes()) {
 				double dist = p.d() + Math.abs(p.nx()) * hx + Math.abs(p.ny()) * hy + Math.abs(p.nz()) * hz;
 				double a = sx * p.nx() + sy * p.ny() + sz * p.nz() - dist, b = ex * p.nx() + ey * p.ny() + ez * p.nz() - dist;
-				if (a >= -tol) {
+				if (a >= -t) {
 					startsOutside = true;
-					if (b >= -tol) continue brushes;
-					double f = (a + tol) / (a - b);
+					if (b >= -t) continue brushes;
+					double f = (a + t) / (a - b);
 					if (entered == null || f > enter) {
 						enter = f;
 						entered = p;
 					}
 					touch = Math.max(touch, a / (a - b));
-				} else if (b >= -tol) leave = Math.min(leave, (a + tol) / (a - b));
+				} else if (b >= -t) leave = Math.min(leave, (a + t) / (a - b));
 			}
 			if (startsOutside && enter < leave && touch < fraction) {
 				fraction = touch;
@@ -71,7 +81,7 @@ public final class ExactCollide {
 	 * start inside; 1 if it never does.
 	 */
 	public static double sweep(List<Brush> world, V3 from, V3 to, V3 half) {
-		return first(world, from, to, half, TOL).fraction();
+		return first(world, from, to, half, TOL, 0).fraction();
 	}
 
 	/** True when the box moves from {@code from} to {@code to} without crossing into anything. */
@@ -82,12 +92,18 @@ public final class ExactCollide {
 	/**
 	 * The movement of a box with its feet at {@code feet}: {@code delta} if the straight sweep is clear, else resolved axis
 	 * by axis. {@code step} is the step height; {@code onGround} the entity's ground flag (for vanilla's step-up rule).
-	 * {@code lift}: when that still falls short horizontally, also try lifting the box by up to
-	 * {@code step + delta's horizontal length / 2} before moving across (only for checking a client's move).
+	 * {@code lift} (only for checking a client's move): the straight move also counts as clear when Source's trace passes
+	 * it or the box shrunk by DIST_EPSILON does; and when the resolved move falls short horizontally, also try lifting the
+	 * box by up to {@code step + delta's horizontal length / 2} before moving across.
 	 */
 	public static V3 resolve(List<Brush> world, V3 feet, V3 delta, V3 half, double step, boolean onGround, boolean lift) {
-		V3 centre = feet.add(new V3(0, 0, half.z()));
-		if (delta.isZero() || clear(world, centre, centre.add(delta), half)) return delta;
+		V3 centre = feet.add(new V3(0, 0, half.z())), end = centre.add(delta);
+		if (delta.isZero() || clear(world, centre, end, half)) return delta;
+		if (lift) {
+			HullTrace source = SourceHull.trace(world, centre, end, half);
+			V3 e = new V3(SourceHull.EPSILON, SourceHull.EPSILON, SourceHull.EPSILON);
+			if (source.fraction() == 1 && !source.startSolid() || clear(world, centre, end, half.sub(e))) return delta;
+		}
 		V3 moved = axes(world, centre, delta, half);
 		boolean blockedX = moved.x() != delta.x(), blockedY = moved.y() != delta.y(), landed = moved.z() != delta.z() && delta.z() < 0;
 		if (!blockedX && !blockedY) return moved;
