@@ -82,5 +82,11 @@
   "title": "Placement preview: green fits, red is blocked",
   "caption": "Holding the knife outlines the box a click would fill, using the server's own placement code: green when it fits, red with the blocked cells outlined, and at a ramp's end the next extension.",
   "at": "2026-10-01 03:00"
+ },
+ {
+  "file": "shots/15-all-or-nothing.jpg",
+  "title": "All or nothing",
+  "caption": "Clicking where it doesn't fit places nothing: the action bar gives the reason and red dust marks the 44 cells in the way. In survival the knife also takes one item per block, or lists what's missing; sneak + right-click in the air undoes.",
+  "at": "2026-10-01 03:00"
  }
 ]
