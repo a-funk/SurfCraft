@@ -164,3 +164,21 @@ with it and fall damage that ignores ramp contact.
 ### Merged main
 - `./gradlew build`: 44 JUnit (0 skipped with local-content) + 21 server game tests. `./gradlew
   runClientGameTest`: showcase, karambit, surf, server all pass (2m 6s).
+
+## Wave C review (2026-10-01)
+Five adversarial reviewers (physics fidelity; game states; multiplayer/server; blocks/Karambit/UX; simplicity
+and packaging), each finding reproduced, each lens re-checked by a skeptic. 38 findings: 1 blocker, 13 major,
+22 minor, 2 refuted. Full record with evidence: `docs/dev/review-wave-c.md`. Highlights:
+- **Fidelity (A1):** the port (and the surf repo) lacks CS:S's `TryTouchGroundInQuadrants`, found in the CS:S
+  build 11003710 server binary (`server_srv.so`, unstripped): quarter-hull ground probes after a failed full-hull
+  probe. Without it surfers stay airborne a tick longer at ramp toes. Also the binary's box-trace tie rule (A4)
+  and ClipVelocity (A5) differ from the surf repo's fitted versions.
+- **Blocker (B1/C1):** vanilla's "moved too quickly" resets its packet budget after 5 packets per server tick,
+  so any ~300 ms stall teleports a surfer above ~1300 u/s back and stops them dead on dedicated servers.
+- **Majors:** auto hop skips fall damage (landing and hop inside one tick, the server never sees ground);
+  sneaking near ramps loses vanilla's slow walk and edge protection; placement joining can pick a neighbour
+  ramp's plane (sawtooth); ramps aren't in `blocks_motion` (rain falls through); the Karambit preview flood-fills
+  the whole ramp every tick and extend refuses long ramps.
+- Packaging (E2/E3/E4) fixed directly: provenance notices + Source SDK license texts in repo and jar, `fabric-api
+  >=0.161.0`, contact URL, `local-content` declared as a test input, a real icon.
+- Fixes run as Wave D in three worktrees (physics core / server and controller / blocks and Karambit).
