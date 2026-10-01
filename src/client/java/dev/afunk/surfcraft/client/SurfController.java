@@ -44,8 +44,11 @@ public final class SurfController {
 	public static final double UNITS_TO_BLOCKS_PER_TICK = 0.0254 * TickDriver.TICK;
 	/** Units around the hull's one-tick reach collected as brushes: covers a jump, a step and a tick's acceleration. */
 	static final double REACH = 60;
-	/** Units from the anchor after which the local frame follows the player (float origins stay within 0.001 unit). */
-	static final double REANCHOR = 8192;
+	/**
+	 * Units from the anchor after which the local frame follows the player. Below 8192 units a float origin's half
+	 * ulp (2.4e-4 u) stays inside the server's 1e-5-block new-collision deflation (3.9e-4 u); at 8192 it would not.
+	 */
+	static final double REANCHOR = 4096;
 
 	/** One driven tick, for tests: the driver before it, its brushes and inputs, and what was published. */
 	public record Tick(TickDriver before, BlockPos anchor, List<Brush> world, double forward, double side, boolean jump, double yaw, Vec3 published,

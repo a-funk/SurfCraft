@@ -11,7 +11,7 @@ A Fabric mod for Minecraft Java 26.3: CS:S surf ramps and CS:S surf movement. `M
 - `./gradlew runClientGameTest` opens a client window and runs the client game tests: a ramp showcase in a
   superflat world, the Karambit driven through real input, and the surf tests in survival, single player
   (`surf`) and against an in-process dedicated server (`server`), which fail on any server correction. Pick some
-  with `-PclientTests=showcase,karambit,surf,server`. Screenshots go to `build/gametest/screenshots/`. Game
+  with `-PclientTests=showcase,karambit,surf,server` (`fps`, a ramp-field frame-rate comparison, runs only when named). Screenshots go to `build/gametest/screenshots/`. Game
   tests live in `src/gametest` (not in the mod jar). The window must be able to draw: with the display asleep
   macOS blocks the first frame (`caffeinate -d -u`). Aim with `tp ... facing` from the feet (it is not
   eye-anchored), and set flying on the server: a client-only `flying` flag is reset and clicks miss.
