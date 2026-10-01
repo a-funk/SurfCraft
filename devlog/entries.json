@@ -28,5 +28,23 @@
   "title": "Smooth slope up close, items in the hotbar",
   "caption": "Up close, the blocks join into one continuous slope with the texture lined up across cells. The hotbar shows both ramp items as wedges.",
   "at": "2026-10-01 01:38"
+ },
+ {
+  "file": "shots/06-java-physics-vs-the-real-cs-s-server.jpg",
+  "title": "Java physics vs the real CS:S server",
+  "caption": "The physics port replays a recording from a real Counter-Strike: Source server on surf_kitsune's ramp: same inputs, same ramp, worst difference 0.006 units over 100 ticks (tolerance 0.05). 18 engine recordings pass this way.",
+  "at": "2026-10-01 01:56"
+ },
+ {
+  "file": "shots/07-the-63-degree-steep-surf-ramp.jpg",
+  "title": "The 63-degree Steep Surf Ramp",
+  "caption": "The 2:1 side of the showcase: eight blocks long and six tall, one smooth plane with a continuous grid.",
+  "at": "2026-10-01 01:56"
+ },
+ {
+  "file": "shots/08-one-block-of-each-type-in-every-facing.jpg",
+  "title": "One block of each type, in every facing",
+  "caption": "Single ramp blocks facing north, east, south and west. Behind them, the cross-section of the joined showcase: a 51-degree side and a 63-degree side meeting at the ridge.",
+  "at": "2026-10-01 01:56"
  }
 ]

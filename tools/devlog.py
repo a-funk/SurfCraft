@@ -3,6 +3,7 @@
   .tools/venv/bin/python tools/devlog.py add <image> "Title" "One-line caption"
   .tools/venv/bin/python tools/devlog.py page       # rebuild devlog/index.html
   .tools/venv/bin/python tools/devlog.py montage    # devlog/montage.mp4 from every shot (needs ffmpeg)
+  .tools/venv/bin/python tools/devlog.py deploy     # publish devlog/ to Railway (project surfcraft-devlog)
 
 Shots are stored as JPEG (at most 1600 px wide) in devlog/shots/, listed in devlog/entries.json.
 """
@@ -22,6 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent / "devlog"
 ROOT.mkdir(exist_ok=True)
 SHOTS = ROOT / "shots"
 ENTRIES = ROOT / "entries.json"
+PUBLIC_URL = "https://devlog-production-6292.up.railway.app"
 
 
 def load():
@@ -74,7 +76,7 @@ figure img {{ display: block; width: 100%; height: auto; }}
 figcaption {{ padding: 12px 16px; }} figcaption p {{ margin: 4px 0 0; color: var(--muted); }}
 .n {{ color: var(--accent); font-weight: 700; margin-right: 6px; }} .at {{ float: right; color: var(--muted); font-size: 13px; }}
 </style></head><body>
-<header><h1>Surf<span>Craft</span> dev log</h1><p>CS:S surf ramps and surf physics for Minecraft 26.3, built step by step.</p></header>
+<header><h1>Surf<span>Craft</span> dev log</h1><p>CS:S surf ramps and surf physics for Minecraft 26.3, built step by step. Work in progress; updated {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}.</p></header>
 <main>
 {cards}
 </main></body></html>
@@ -113,6 +115,13 @@ def montage():
     print(out)
 
 
+def deploy():
+    """Railway serves devlog/ through its Dockerfile (Caddy); the directory is linked to project surfcraft-devlog."""
+    page()
+    subprocess.run(["railway", "up", "--service", "devlog", "--detach", "-m", f"dev log: {len(load())} shots"], cwd=ROOT, check=True)
+    print(f"{PUBLIC_URL} (live in about a minute)")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "add" and len(sys.argv) == 5:
@@ -121,5 +130,7 @@ if __name__ == "__main__":
         page()
     elif cmd == "montage":
         montage()
+    elif cmd == "deploy":
+        deploy()
     else:
         sys.exit(__doc__)
