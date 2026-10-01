@@ -92,6 +92,9 @@ def page():
         f'<p>{html.escape(e["caption"])}</p></figcaption></figure>'
         for i, e in enumerate(load(), 1))
     ROOT.mkdir(exist_ok=True)
+    featured = ('<figure class="featured"><video controls playsinline preload="metadata" poster="shots/34-surfing-the-course-end-to-end.jpg">'
+                '<source src="montage.mp4" type="video/mp4"></video><figcaption><b>The montage</b><p>Every step of the build, '
+                'then the finished mod surfed end to end.</p></figcaption></figure>') if (ROOT / "montage.mp4").exists() else ""
     (ROOT / "index.html").write_text(f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SurfCraft dev log</title>
@@ -104,10 +107,11 @@ header p {{ color: var(--muted); margin: 4px 0 0; }}
 main {{ max-width: 1100px; margin: auto; padding: 16px; display: grid; gap: 20px; }}
 figure {{ margin: 0; background: var(--card); border-radius: 10px; overflow: hidden; }}
 figure img, figure video {{ display: block; width: 100%; height: auto; }}
+.featured {{ margin-top: 20px; }}
 figcaption {{ padding: 12px 16px; }} figcaption p {{ margin: 4px 0 0; color: var(--muted); }}
 .n {{ color: var(--accent); font-weight: 700; margin-right: 6px; }} .at {{ float: right; color: var(--muted); font-size: 13px; }}
 </style></head><body>
-<header><h1>Surf<span>Craft</span> dev log</h1><p>CS:S surf ramps and surf physics for Minecraft 26.3, built step by step. Work in progress; updated {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}.</p></header>
+<header><h1>Surf<span>Craft</span> dev log</h1><p>CS:S surf ramps and surf physics for Minecraft 26.3, built step by step. Updated {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}.</p>{featured}</header>
 <main>
 {cards}
 </main></body></html>
