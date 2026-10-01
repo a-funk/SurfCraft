@@ -100,5 +100,11 @@
   "title": "Surfing in third person",
   "caption": "Third-person view of a survival surf run on the 51-degree ramp at 724 units/s. The legs stay still while sliding instead of running in place, the speedometer reads horizontal speed, and the server accepted every move without a single correction.",
   "at": "2026-10-01 03:09"
+ },
+ {
+  "file": "shots/18-2200-units-s-on-a-dedicated-server.jpg",
+  "title": "2200 units/s on a dedicated server",
+  "caption": "The same surf run against a real dedicated server over the network, in survival, on the 63-degree ramp at 2200 units/s. 254 blocks along the ramp, plus four fast crossings over an apex: the server corrected nothing and logged no 'moved wrongly'.",
+  "at": "2026-10-01 03:43"
  }
 ]
