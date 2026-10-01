@@ -1,7 +1,7 @@
 # Wave C review (2026-10-01)
 
 Five adversarial reviewers, each finding reproduced, then challenged by a skeptic. Severity after the skeptic.
-Probe tests referenced below live in the review worktrees under `.claude/worktrees/wf_926b46be-3ca-*` (not merged).
+Probe tests referenced below lived in the review worktrees `.claude/worktrees/wf_926b46be-3ca-<n>`; they are archived in `review-probes/wt-<n>/`.
 
 | ID | Severity | Verdict | Finding |
 |---|---|---|---|
