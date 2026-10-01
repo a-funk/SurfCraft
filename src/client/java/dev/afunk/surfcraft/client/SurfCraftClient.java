@@ -6,5 +6,6 @@ public final class SurfCraftClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		RampModels.register();
+		KarambitPreview.register();
 	}
 }

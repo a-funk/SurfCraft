@@ -1,4 +1,22 @@
 {
   "block.surfcraft.surf_ramp": "Surf Ramp",
-  "block.surfcraft.steep_surf_ramp": "Steep Surf Ramp"
+  "block.surfcraft.steep_surf_ramp": "Steep Surf Ramp",
+  "item.surfcraft.karambit": "Karambit",
+  "item.surfcraft.karambit.module": "Module %sx%sx%s, %s blocks",
+  "item.surfcraft.karambit.default": "Default module: two-sided 51° ramp %sx%sx%s, %s blocks",
+  "item.surfcraft.karambit.place": "Right-click a block: place the module",
+  "item.surfcraft.karambit.extend": "Right-click a ramp: extend it with the module",
+  "item.surfcraft.karambit.copy": "Sneak + right-click a ramp: copy it as the module",
+  "item.surfcraft.karambit.undo": "Sneak + right-click air: undo the last placement",
+  "surfcraft.karambit.copied": "Copied module %sx%sx%s, %s blocks",
+  "surfcraft.karambit.placed": "Placed the module: %s blocks",
+  "surfcraft.karambit.extended": "Extended the ramp: %s blocks",
+  "surfcraft.karambit.undone": "Undone: %s blocks restored",
+  "surfcraft.karambit.blocked": "No room: %s cells are not free",
+  "surfcraft.karambit.mismatch": "The module doesn't continue this ramp's end. Sneak + right-click to copy this ramp.",
+  "surfcraft.karambit.missing": "Missing %s",
+  "surfcraft.karambit.nothing_to_undo": "Nothing to undo",
+  "surfcraft.karambit.copy_hint": "Sneak + right-click a surf ramp to copy it",
+  "surfcraft.karambit.too_large": "This ramp is too large",
+  "surfcraft.karambit.too_complex": "This piece is too complex to copy"
 }

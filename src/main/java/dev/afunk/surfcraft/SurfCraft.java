@@ -1,6 +1,7 @@
 package dev.afunk.surfcraft;
 
 import dev.afunk.surfcraft.block.SurfBlocks;
+import dev.afunk.surfcraft.karambit.KarambitItem;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -17,6 +18,7 @@ public final class SurfCraft implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		SurfBlocks.register();
+		KarambitItem.register();
 		LOG.info("SurfCraft loaded");
 	}
 }
