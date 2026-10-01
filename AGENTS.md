@@ -10,6 +10,9 @@ A Fabric mod for Minecraft Java 26.3: CS:S surf ramps and CS:S surf movement. `M
   tests, `./gradlew runGameTest` only the game tests (report: `build/gametest/server-tests.xml`).
 - `./gradlew runClientGameTest` opens a client window, builds a ramp showcase in a superflat world and saves
   screenshots to `build/gametest/screenshots/`. Game tests live in `src/gametest` (not in the mod jar).
+  It also runs the surf tests in survival, single player (`surf`) and against an in-process dedicated server
+  (`server`), which fail on any server correction; pick some with `-PclientTests=surf,server,showcase`. The
+  window must be able to draw: with the display asleep macOS blocks the first frame (`caffeinate -u` wakes it).
 - `./gradlew runClient` starts the dev client (offline account, `run/` folder).
 - Physics reference replays need the user's own map geometry in `local-content/` (gitignored):
   `node tools/extract-kitsune-brushes.mjs`. Without it those cases skip; never commit map content.
