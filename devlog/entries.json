@@ -124,5 +124,11 @@
   "title": "A real mod icon",
   "caption": "The Fabric placeholder icon is replaced with SurfCraft's own: a surf ramp in 3/4 view with the Karambit, drawn in code as 32x32 pixel art.",
   "at": "2026-10-01 04:08"
+ },
+ {
+  "file": "shots/22-fixed-the-ground-at-a-ramp-s-toe.jpg",
+  "title": "Fixed: the ground at a ramp's toe",
+  "caption": "CS:S also probes each quarter of the player's box for floor; without it, a surfer at a ramp's foot stayed airborne and kept speed (2:1 toe: 1101 vs 463 u/s).",
+  "at": "2026-10-01 06:05"
  }
 ]
