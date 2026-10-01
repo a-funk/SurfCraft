@@ -154,5 +154,11 @@
   "title": "Other players see surfers glide",
   "caption": "The server now tells each client who is surfing, so another player's legs settle on a ramp instead of running in mid-air.",
   "at": "2026-10-01 06:18"
+ },
+ {
+  "file": "shots/27-ramps-built-side-by-side-keep-their-own-plane.jpg",
+  "title": "Ramps built side by side keep their own plane",
+  "caption": "D1: a second 5:4 ramp built by hand beside the first came out as a sawtooth; placement now continues the ramp you click, then the cell's own slice, then the lower plane.",
+  "at": "2026-10-01 06:46"
  }
 ]
