@@ -2,6 +2,7 @@ package dev.afunk.surfcraft.client;
 
 import dev.afunk.surfcraft.mixin.EntityAccessor;
 import dev.afunk.surfcraft.movement.BrushWorld;
+import dev.afunk.surfcraft.movement.RampCollision;
 import dev.afunk.surfcraft.movement.SurfPlayer;
 import dev.afunk.surfcraft.physics.Brush;
 import dev.afunk.surfcraft.physics.Config;
@@ -13,6 +14,8 @@ import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.Level;
@@ -23,22 +26,24 @@ import org.jspecify.annotations.Nullable;
  * CS:S surf movement for the local player (one per {@link LocalPlayer}, so a new world, death or respawn starts fresh).
  *
  * <p>It drives while the player is on foot (not flying, gliding, riding, in a fluid, swimming, climbing, sleeping,
- * spectating, spin attacking or stuck in a cobweb) and either near a ramp or still in the post-surf window: airborne
- * since leaving one, or on other ground for at most {@link #GRACE} ticks, so hops carry from ramp to ramp. Each driven
- * tick runs {@link dev.afunk.surfcraft.physics.SourceMovement} substeps through {@link TickDriver} and publishes the result through
- * {@code player.move} with a trust payload, so footsteps, view bob, fall handling and block effects keep working; the
- * velocity it leaves in {@code deltaMovement} is the true one, which vanilla continues from when it hands back.
+ * spectating, spin attacking, stuck in a cobweb, levitating or slow falling) and either near a ramp
+ * ({@link RampCollision#surfNear}) or still in the post-surf window: airborne since leaving one, or on other ground for at
+ * most {@link RampCollision#GRACE} ticks, so hops carry from ramp to ramp. Sneaking on flat ground is vanilla's sneak,
+ * near a ramp or not. Each driven tick runs {@link dev.afunk.surfcraft.physics.SourceMovement} substeps through
+ * {@link TickDriver} and publishes the result through {@code player.move} with a trust payload, so footsteps, view bob,
+ * fall handling and block effects keep working; the velocity it leaves in {@code deltaMovement} is the true one, which
+ * vanilla continues from when it hands back.
+ *
+ * <p>While it drives, CS:S's fixed values apply (knife speed 250, jump, gravity 800): Speed, Jump Boost and honey's jump
+ * factor do not change them. Block speed factors (soul sand, honey) and bounces (slime, beds) do, as vanilla applies them
+ * in {@code move}.
  */
 public final class SurfController {
 	static final double K = SourceUnits.PER_BLOCK;
 	/** Units/s to blocks/tick: 0.0254 m per unit, 0.05 s per tick. */
 	public static final double UNITS_TO_BLOCKS_PER_TICK = 0.0254 * TickDriver.TICK;
-	/** Blocks beyond this tick's travel within which a ramp starts the controller. */
-	static final double MARGIN = 1.5;
 	/** Units around the hull's one-tick reach collected as brushes: covers a jump, a step and a tick's acceleration. */
 	static final double REACH = 60;
-	/** Ticks on other ground after leaving a ramp before vanilla movement resumes. */
-	public static final int GRACE = 10;
 	/** Units from the anchor after which the local frame follows the player (float origins stay within 0.001 unit). */
 	static final double REANCHOR = 8192;
 
@@ -87,7 +92,7 @@ public final class SurfController {
 		driving = false;
 		if (!eligible()) {
 			if (was && log != null) log.accept("not eligible at " + player.position());
-			stop();
+			handBack();
 			return;
 		}
 		if (driver != null && !player.position().equals(lastPos)) {
@@ -97,18 +102,22 @@ public final class SurfController {
 			if (log != null) log.accept("resync " + lastPos + " -> " + player.position());
 			stop();
 		}
-		double reach = (driver != null ? driver.core.velocity.length() * UNITS_TO_BLOCKS_PER_TICK : player.getDeltaMovement().length()) + MARGIN;
-		boolean near = BrushWorld.rampNear(player.level(), player.getBoundingBox().inflate(reach));
-		if (near) groundTicks = 0;
+		// Sneaking on flat ground is vanilla's sneak (slow, held back at edges), near a ramp too: CS:S's duck is not ported.
+		if (player.isShiftKeyDown() && (driver != null ? driver.core.grounded : player.onGround())) {
+			if (was && log != null) log.accept("hand back to sneak at " + player.position());
+			handBack();
+			return;
+		}
+		double speed = driver != null ? driver.core.velocity.length() * UNITS_TO_BLOCKS_PER_TICK : player.getDeltaMovement().length();
+		if (RampCollision.surfNear(player, speed)) groundTicks = 0;
 		else if (driver == null) {
 			if (was && log != null) log.accept("no ramp near " + player.position());
 			return;
 		} else {
 			groundTicks = driver.core.grounded ? groundTicks + 1 : 0;
-			// Sneaking on plain ground: vanilla's edge back-off (on both sides) needs vanilla movement.
-			if (groundTicks > GRACE || driver.core.grounded && player.isShiftKeyDown()) {
+			if (groundTicks > RampCollision.GRACE) {
 				if (log != null) log.accept("hand back after " + groundTicks + " ticks on the ground at " + player.position());
-				stop();
+				handBack();
 				return;
 			}
 		}
@@ -124,13 +133,23 @@ public final class SurfController {
 		return player.isAlive() && Minecraft.getInstance().getCameraEntity() == player && !player.isPassenger() && !player.getAbilities().flying
 				&& !player.isFallFlying() && !player.isInWater() && !player.isInLava() && !player.isSwimming() && !player.onClimbable() && !player.isSleeping()
 				&& !player.isSpectator() && !player.isAutoSpinAttack() && !player.noPhysics
-				&& ((EntityAccessor) player).surfcraft$stuckSpeedMultiplier().lengthSqr() <= 1e-7;
+				&& ((EntityAccessor) player).surfcraft$stuckSpeedMultiplier().lengthSqr() <= 1e-7
+				&& !player.hasEffect(MobEffects.LEVITATION) && !player.hasEffect(MobEffects.SLOW_FALLING);
 	}
 
 	private void stop() {
 		driver = null;
 		lastPos = lastVel = null;
 		groundTicks = 0;
+	}
+
+	/**
+	 * Leaves the player to vanilla movement. From the ground, with the downward velocity vanilla's players at rest carry
+	 * (Source keeps none): vanilla's first move then finds the ground too, instead of counting the player airborne.
+	 */
+	private void handBack() {
+		if (driver != null && driver.core.grounded) player.setDeltaMovement(player.getDeltaMovement().with(Direction.Axis.Y, -player.getGravity()));
+		stop();
 	}
 
 	/** a2, instead of vanilla travel; false hands this tick to vanilla (the hull is stuck inside something). */
@@ -198,12 +217,16 @@ public final class SurfController {
 	/**
 	 * Publishes the core state at the tick boundary through {@code move} (research doc section 9): a Source-grounded
 	 * player's move gets a small downward probe so {@code move} sees ground (footsteps, landing, supporting block), then
-	 * deltaMovement and the flags are set from the core.
+	 * deltaMovement and the flags are set from the core. What {@code move} does to the velocity, the core takes on: the
+	 * block speed factor (soul sand, honey) and a bounce (slime, beds), which reverses this tick's fall.
 	 */
 	private void publish(TickDriver d) {
 		Vec3 exact = BrushWorld.toMinecraft(d.published, anchor).subtract(player.position());
 		boolean grounded = d.core.grounded;
 		Vec3 request = grounded ? new Vec3(exact.x, Math.min(exact.y, 0) - 1e-3, exact.z) : exact;
+		Vec3 velocity = minecraftVelocity(d.core.velocity);
+		double fall = player.getDeltaMovement().y;
+		player.setDeltaMovement(velocity.x, fall, velocity.z);
 		SurfPlayer trust = (SurfPlayer) player;
 		trust.surfcraft$setTrust(exact);
 		try {
@@ -211,7 +234,14 @@ public final class SurfController {
 		} finally {
 			trust.surfcraft$setTrust(null);
 		}
-		Vec3 velocity = minecraftVelocity(d.core.velocity);
+		Vec3 moved = player.getDeltaMovement();
+		boolean bounced = fall < 0 && moved.y > 0;
+		if (bounced || moved.x != velocity.x || moved.z != velocity.z) {
+			// A bounce leaves the ground as vanilla's jump on slime does: the higher of the jump and the bounce.
+			d.core.velocity = sourceVelocity(new Vec3(moved.x, bounced ? Math.max(velocity.y, moved.y) : velocity.y, moved.z));
+			d.core.grounded &= !bounced;
+			velocity = minecraftVelocity(d.core.velocity);
+		}
 		player.setDeltaMovement(velocity);
 		player.verticalCollision = grounded || d.ceiling;
 		player.verticalCollisionBelow = grounded;

@@ -24,8 +24,8 @@ import net.minecraft.world.phys.Vec3;
  */
 final class Surfer {
 	/** Per tick: the client player, the controller, and the server's copy of the player. */
-	record Sample(boolean driving, Vec3 pos, AABB box, double speed, Vec3 deltaMovement, boolean grounded, boolean surfed, boolean onGround,
-			float yaw, Vec3 server, float health, int resyncs, int adopts, long nanos, boolean inWater, boolean flying) {
+	record Sample(boolean driving, Vec3 pos, AABB box, double speed, Vec3 deltaMovement, boolean grounded, boolean surfed, float yaw, Vec3 server,
+			float health, int resyncs, int adopts, long nanos, boolean inWater, boolean flying) {
 	}
 
 	/** The client player's position after every client tick (the test waits run ticks of their own too). Client thread. */
@@ -112,7 +112,8 @@ final class Surfer {
 		return s;
 	}
 
-	private float lastHealth = Float.MAX_VALUE;
+	/** NaN until the first sample: no "drop" from nothing. */
+	private float lastHealth = Float.NaN;
 
 	Sample sample() {
 		Sample client = context.computeOnClient(c -> {
@@ -120,14 +121,14 @@ final class Surfer {
 			SurfController sc = controller(c);
 			TickDriver d = sc.driver();
 			return new Sample(sc.driving(), p.position(), p.getBoundingBox(), sc.speed(), p.getDeltaMovement(), d != null && d.core.grounded,
-					d != null && d.surfed, p.onGround(), p.getYRot(), null, p.getHealth(), sc.resyncs, sc.adopts, sc.nanos, p.isInWater(), p.getAbilities().flying);
+					d != null && d.surfed, p.getYRot(), null, p.getHealth(), sc.resyncs, sc.adopts, sc.nanos, p.isInWater(), p.getAbilities().flying);
 		});
 		Object[] s = server.computeOnServer(srv -> {
 			ServerPlayer p = srv.getPlayerList().getPlayers().getFirst();
 			return new Object[] {p.position(), p.getHealth()};
 		});
-		return new Sample(client.driving, client.pos, client.box, client.speed, client.deltaMovement, client.grounded, client.surfed, client.onGround,
-				client.yaw, (Vec3) s[0], (Float) s[1], client.resyncs, client.adopts, client.nanos, client.inWater, client.flying);
+		return new Sample(client.driving, client.pos, client.box, client.speed, client.deltaMovement, client.grounded, client.surfed, client.yaw,
+				(Vec3) s[0], (Float) s[1], client.resyncs, client.adopts, client.nanos, client.inWater, client.flying);
 	}
 
 	void check(boolean ok, String message) {

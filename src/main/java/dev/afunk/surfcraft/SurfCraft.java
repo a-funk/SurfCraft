@@ -2,6 +2,7 @@ package dev.afunk.surfcraft;
 
 import dev.afunk.surfcraft.block.SurfBlocks;
 import dev.afunk.surfcraft.karambit.KarambitItem;
+import dev.afunk.surfcraft.movement.Surfing;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ public final class SurfCraft implements ModInitializer {
 	public void onInitialize() {
 		SurfBlocks.register();
 		KarambitItem.register();
+		Surfing.register();
 		LOG.info("SurfCraft loaded");
 	}
 }

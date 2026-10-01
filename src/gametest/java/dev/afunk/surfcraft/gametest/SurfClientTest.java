@@ -18,9 +18,11 @@ import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.ChatVisiblity;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -31,7 +33,8 @@ import net.minecraft.world.phys.Vec3;
  * Surfing in a real client against the integrated server, in survival with fall damage on: surf runs on a 5:4 and a
  * 2:1 A-frame and on a 5:4 ramp over plain stone, each replayed offline through the same driver as the oracle; air
  * strafing; bunny hopping and the hand back to vanilla; vanilla walking away from ramps; teleports, knockback, water,
- * creative flight and sneaking; and the controller's cost per tick in a dense ramp field.
+ * creative flight and sneaking; vanilla's sneak, Levitation and Slow Falling beside ramps; slime after a surf; an elytra
+ * on a ramp; the speedometer; another player surfing; and the controller's cost per tick in a dense ramp field.
  */
 public class SurfClientTest implements FabricClientGameTest {
 	static final double UPS = SurfController.UNITS_TO_BLOCKS_PER_TICK;
@@ -54,6 +57,12 @@ public class SurfClientTest implements FabricClientGameTest {
 				stone.build(level);
 				// A pool on the 5:4 ramp's west side, and a dense field of single ramp cells for the timing run.
 				for (int x = -8; x <= -6; x++) for (int z = 60; z <= 66; z++) for (int y = g - 2; y < g; y++) level.setBlock(new BlockPos(x, y, z), Blocks.WATER.defaultBlockState(), Block.UPDATE_CLIENTS);
+				// Beside the 5:4 ramp: slime floor where a launch off its ridge lands, a start platform level with the ridge at its
+				// north end, and a block 1.2 blocks from its east toe (standing on it is within the controller's reach).
+				for (int x = 8; x <= 30; x++) for (int z = 40; z <= 52; z++) level.setBlock(new BlockPos(x, g - 1, z), Blocks.SLIME_BLOCK.defaultBlockState(), Block.UPDATE_CLIENTS);
+				for (int x = 5; x <= 7; x++) for (int z = 60; z <= 75; z++) level.setBlock(new BlockPos(x, g - 1, z), Blocks.SOUL_SAND.defaultBlockState(), Block.UPDATE_CLIENTS);
+				for (int x = -1; x <= 1; x++) for (int z = 100; z <= 104; z++) level.setBlock(new BlockPos(x, g + 5, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+				level.setBlock(new BlockPos(6, g, 80), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
 				Random random = new Random(3);
 				for (int x = 20; x < 44; x++) for (int z = 110; z < 134; z++) for (int y = g; y < g + 2; y++) {
 					if (random.nextInt(10) < 3) continue;
@@ -75,6 +84,12 @@ public class SurfClientTest implements FabricClientGameTest {
 			bunnyHopAndHandBack(s, a, g);
 			vanillaWalking(s, g);
 			edgeCases(s, a, g);
+			sneakingNearRamps(s, g);
+			effects(s, a, g);
+			blockEffects(s, a, g);
+			elytra(s, a);
+			speedometer(s, a, g);
+			otherSurfers(s, a, g);
 			denseField(s, g, nanos);
 
 			System.out.printf("SURFCRAFT single player: %d server rejections %s, %d untracked ticks%n", log.rejections.size(), log.rejections, s.untracked);
@@ -245,7 +260,7 @@ public class SurfClientTest implements FabricClientGameTest {
 	 * velocity, not its own zero-input one). Let go and, after the grace window, vanilla movement resumes at a sane speed.
 	 */
 	static void bunnyHopAndHandBack(Surfer s, AFrame ramp, int g) {
-		// The air strafe landings hurt (vanilla fall damage): heal, and wait out the hurt cooldown.
+		// Full health and no hurt cooldown, so the hit mid-hop lands.
 		s.server.runCommand("effect give @a minecraft:instant_health 1 5 true");
 		for (int t = 0; t < 25; t++) s.tick();
 		s.context.getInput().holdKey(o -> o.keyJump);
@@ -446,6 +461,182 @@ public class SurfClientTest implements FabricClientGameTest {
 				sneakWorst, sneak.box().getYsize());
 		s.check(sneak.resyncs() == 0 && sneakDrove && sneakWorst > -1e-4, "sneaking on the ramp: resyncs " + sneak.resyncs() + ", clearance " + sneakWorst);
 		for (int t = 0; t < 60 && !s.sample().grounded(); t++) s.tick();
+	}
+
+	/**
+	 * Sneaking on flat ground near a ramp is vanilla's sneak (B4): it holds the player at the edge of the start platform at
+	 * the ramp's end and of a block 1.2 blocks from its toe (without a server correction, C4), at sneaking speed.
+	 */
+	static void sneakingNearRamps(Surfer s, int g) {
+		// Feet x, y, z, and the edge ahead (east).
+		for (double[] e : new double[][] {{0.5, g + 6, 100.5, 2}, {6.5, g + 1, 80.5, 7}}) {
+			s.tp(e[0], e[1], e[2], -90, 0);
+			s.context.getInput().holdKey(o -> o.keyShift);
+			for (int t = 0; t < 5; t++) s.tick();
+			s.context.getInput().holdKey(o -> o.keyUp);
+			for (int t = 0; t < 30; t++) s.tick();
+			Surfer.Sample end = s.sample();
+			s.context.getInput().releaseKey(o -> o.keyUp);
+			s.context.getInput().releaseKey(o -> o.keyShift);
+			System.out.printf("SURFCRAFT sneaking toward an edge at x %.0f beside a ramp: stopped at x %.3f, feet %.3f blocks above the top%n", e[3], end.pos().x, end.pos().y - e[1]);
+			s.check(end.pos().y > e[1] - 1e-3 && end.pos().x < e[3] + 0.3, "sneaking walked off the edge at x " + e[3] + ": now at " + end.pos());
+			for (int t = 0; t < 10; t++) s.tick();
+		}
+		s.tp(5.6, g, 55.5, 0, 0);
+		s.context.getInput().holdKey(o -> o.keyShift);
+		for (int t = 0; t < 5; t++) s.tick();
+		s.context.getInput().holdKey(o -> o.keyUp);
+		Vec3 from = null;
+		for (int t = 0; t < 30; t++) {
+			Surfer.Sample x = s.tick();
+			if (t == 14) from = x.pos();
+		}
+		double speed = s.sample().pos().subtract(from).horizontalDistance() / 15 * 20;
+		s.context.getInput().releaseKey(o -> o.keyUp);
+		s.context.getInput().releaseKey(o -> o.keyShift);
+		System.out.printf("SURFCRAFT sneaking along the ramp's toe: %.3f blocks/s%n", speed);
+		s.check(speed < 2, "sneaking beside the ramp at " + speed + " blocks/s");
+	}
+
+	/** Levitation and Slow Falling hand the player to vanilla even beside a ramp or after a surf (B5). */
+	static void effects(Surfer s, AFrame ramp, int g) {
+		s.tp(5.6, g, 90.5, 90, 0);
+		for (int t = 0; t < 5; t++) s.tick();
+		double y0 = s.sample().pos().y, top = y0;
+		boolean drove = false;
+		s.server.runCommand("effect give @a minecraft:levitation 2 1 true");
+		for (int t = 0; t < 30; t++) {
+			Surfer.Sample x = s.tick();
+			top = Math.max(top, x.pos().y);
+			// From the tick the effect reaches the client.
+			drove |= t > 1 && x.driving();
+		}
+		s.server.runCommand("effect clear @a minecraft:levitation");
+		for (int t = 0; t < 30 && !s.sample().grounded(); t++) s.tick();
+		// Launched off the ridge (the post-surf window) with Slow Falling.
+		s.server.runCommand("effect give @a minecraft:slow_falling 30 0 true");
+		s.tp(ramp.eastX(5.9, 0.05), ramp.base() + 5.9, ramp.z0() + 20.5, -90, 0);
+		s.velocity(new Vec3(300 * UPS, 1.0, 0));
+		double fastest = 0;
+		for (int t = 0; t < 200 && (t < 5 || s.sample().pos().y - g > 0.01); t++) fastest = Math.min(fastest, s.tick().deltaMovement().y);
+		s.server.runCommand("effect clear @a minecraft:slow_falling");
+		System.out.printf("SURFCRAFT effects: levitation beside the ramp rose %.2f blocks (driving %b), slow falling after a launch fell at most %.3f blocks/tick%n", top - y0, drove,
+				fastest);
+		s.check(top - y0 > 1 && !drove, "levitation beside the ramp rose " + (top - y0) + " blocks, driving " + drove);
+		s.check(fastest > -0.5, "slow falling after a launch fell at " + fastest + " blocks/tick");
+	}
+
+	/** Block effects move() applies reach the core (B3): landing on slime after a surf bounces; soul sand slows the walk. */
+	static void blockEffects(Surfer s, AFrame ramp, int g) {
+		s.tp(ramp.eastX(5.9, 0.05), ramp.base() + 5.9, 46.5, -90, 0);
+		s.velocity(new Vec3(300 * UPS, 1.0, 0));
+		int landed = -1;
+		double bounce = 0;
+		for (int t = 0; t < 110 && (landed < 0 || t < landed + 40); t++) {
+			Surfer.Sample x = s.tick();
+			if (landed < 0 && t > 5 && x.pos().y - g < 0.05) landed = t;
+			else if (landed >= 0) bounce = Math.max(bounce, x.pos().y - g);
+		}
+		System.out.printf("SURFCRAFT slime after a surf: landed at tick %d, bounced %.2f blocks%n", landed, bounce);
+		s.check(landed > 0 && bounce > 4, "slime after a surf: landed at tick " + landed + ", bounced " + bounce + " blocks");
+		// Soul sand beside the toe slows the controller's walk (CS:S 250 u/s, 6.35 blocks/s) as move() slows vanilla's.
+		s.tp(6.5, g, 60.5, 0, 0);
+		s.context.getInput().holdKey(o -> o.keyUp);
+		Vec3 from = null;
+		boolean drove = true;
+		for (int t = 0; t < 30; t++) {
+			Surfer.Sample x = s.tick();
+			drove &= x.driving();
+			if (t == 14) from = x.pos();
+		}
+		double speed = s.sample().pos().subtract(from).horizontalDistance() / 15 * 20;
+		s.context.getInput().releaseKey(o -> o.keyUp);
+		System.out.printf("SURFCRAFT walking on soul sand beside the ramp: %.3f blocks/s, driving %b%n", speed, drove);
+		s.check(drove && speed > 0.5 && speed < 4, "walking on soul sand beside the ramp at " + speed + " blocks/s, driving " + drove);
+	}
+
+	/** An elytra deploys on a ramp (B9): pulling up while surfing, the client and the server both glide. */
+	static void elytra(Surfer s, AFrame ramp) {
+		s.server.runCommand("item replace entity @a armor.chest with minecraft:elytra");
+		s.tp(ramp.eastX(3, 0.01), ramp.base() + 3, ramp.z0() + 50, 0, -30);
+		s.velocity(new Vec3(-0.02, 0, 1200 * UPS));
+		s.tick();
+		s.context.getInput().holdKey(o -> o.keyRight);
+		for (int t = 0; t < 4; t++) s.tick();
+		s.context.getInput().holdKey(o -> o.keyJump);
+		int both = 0;
+		StringBuilder trace = new StringBuilder();
+		for (int t = 0; t < 10; t++) {
+			if (t == 1) s.context.getInput().releaseKey(o -> o.keyJump);
+			s.tick();
+			boolean client = s.context.computeOnClient(c -> c.player.isFallFlying());
+			boolean server = s.server.computeOnServer(srv -> srv.getPlayerList().getPlayers().getFirst().isFallFlying());
+			if (client && server) both++;
+			trace.append(client ? 'c' : '-').append(server ? 's' : '-').append(' ');
+		}
+		s.context.getInput().releaseKey(o -> o.keyRight);
+		s.server.runCommand("item replace entity @a armor.chest with minecraft:air");
+		System.out.println("SURFCRAFT elytra on the ramp (client/server gliding per tick): " + trace);
+		s.check(both >= 3, "the elytra did not deploy on the ramp: " + trace);
+		for (int t = 0; t < 80 && !s.sample().grounded(); t++) s.tick();
+	}
+
+	/**
+	 * The speedometer sits above the action bar (B6), so a Karambit message stays readable, and hides at rest. Screenshots:
+	 * surfing with an action-bar message, and standing beside the ramp.
+	 */
+	static void speedometer(Surfer s, AFrame ramp, int g) {
+		s.tp(ramp.eastX(3, 0.01), ramp.base() + 3, ramp.z0() + 30, 0, 8);
+		s.velocity(new Vec3(-0.02, 0, 800 * UPS));
+		s.context.getInput().holdKey(o -> o.keyRight);
+		for (int t = 0; t < 6; t++) s.tick();
+		s.server.runOnServer(srv -> srv.getPlayerList().getPlayers().getFirst().sendOverlayMessage(Component.literal("Placed the module: 96 blocks")));
+		s.tick();
+		s.context.runOnClient(c -> c.gui.toastManager().clear());
+		s.screenshot("speedometer_with_action_bar");
+		s.context.getInput().releaseKey(o -> o.keyRight);
+		for (int t = 0; t < 60 && !s.sample().grounded(); t++) s.tick();
+		s.tp(5.6, g, 95.5, 90, 10);
+		for (int t = 0; t < 5; t++) s.tick();
+		s.check(s.sample().driving(), "not driving beside the ramp");
+		s.screenshot("speedometer_hidden_at_rest");
+	}
+
+	/**
+	 * Other players see a surfer glide, not run (C6). A second player, driven by packets, slides along the 5:4 slope at 1000
+	 * u/s past the client's player: the server tells the client it is surfing, so its legs settle; the same flight far
+	 * from ramps swings them as vanilla does.
+	 */
+	static void otherSurfers(Surfer s, AFrame ramp, int g) {
+		// Standing on the floor east of the slope, facing up it toward where the other player passes.
+		s.tp(ramp.eastX(0, 4), g, ramp.z0() + 80, 110, -12);
+		for (int t = 0; t < 5; t++) s.tick();
+		s.context.runOnClient(c -> c.gui.toastManager().clear());
+		PacketPlayer other = s.server.computeOnServer(srv -> new PacketPlayer(srv.overworld(), "Surfer2"));
+		try {
+			Vec3 slope = new Vec3(ramp.eastX(3, 0.01), ramp.base() + 3, ramp.z0() + 72), air = new Vec3(60.5, g + 3, ramp.z0() + 72);
+			double[] legs = {-1, -1};
+			for (int k = 0; k < 2; k++) {
+				Vec3 start = k == 0 ? slope : air;
+				s.server.runOnServer(srv -> other.teleport(start));
+				for (int t = 0; t < 16; t++) {
+					Vec3 at = start.add(0, 0, (t + 1) * 1000 * UPS);
+					s.server.runOnServer(srv -> {
+						other.tick();
+						other.move(at, false);
+					});
+					s.tick();
+					if (k == 0 && t == 4) s.screenshot("other_player_surfing");
+					float speed = s.context.computeOnClient(c -> c.level.getEntity(other.player.getId()) instanceof LivingEntity e ? e.walkAnimation.speed() : -1f);
+					if (t >= 6) legs[k] = Math.max(legs[k], speed);
+				}
+			}
+			System.out.printf("SURFCRAFT another player's legs (walk animation speed, 0 still to 1 running): surfing the ramp %.2f, the same flight far from ramps %.2f%n",
+					legs[0], legs[1]);
+			s.check(legs[0] >= 0 && legs[0] < 0.1 && legs[1] > 0.5, "another surfer's legs: " + legs[0] + " on the ramp, " + legs[1] + " far from ramps");
+		} finally {
+			s.server.runOnServer(srv -> other.leave());
+		}
 	}
 
 	/** Timing in a dense field of single ramp cells (no merging): the controller's time per driven tick. */

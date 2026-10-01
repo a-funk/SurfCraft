@@ -666,6 +666,12 @@ in section 9.
   - So a server stall of 6 or more client ticks at top speed teleports the player back. It does not
     apply to the singleplayer owner or with `/gamerule player_movement_check false`.
   - `expectedDist` (server `deltaMovement^2`) is subtracted, which only loosens the check.
+  - **SurfCraft (Wave C, B1):** n packets at a steady v fail once v > 10/sqrt(n) b/t (n <= 5) or 10/n
+    (n >= 6): six packets above 1312 u/s. The CS:S cap is per axis, so |v| reaches 3500*sqrt(3) = 6062 u/s
+    (7.7 b/t). Players in the server's surf window instead get vanilla's single-packet budget (100 square
+    blocks from the last accepted position) for every packet, while their packets run at most 5 s ahead of
+    real time; everyone else keeps vanilla's check. Do not turn the gamerule off: without it one long packet
+    near a ramp costs seconds of re-simulation (review C7).
 - **Moved wrongly** has no distance limit. It fails only when the re-simulation disagrees by more than
   0.25 blocks horizontally.
 - **`isEntityCollidingWithAnythingNew`** only checks the end box.
@@ -673,8 +679,9 @@ in section 9.
   fall-reset clip is capped at 8 blocks.
 - **Tracking to other clients.** The player update interval is 2 ticks. Deltas over 8 blocks per axis
   (8.9 at top speed) fall back to full-precision `ClientboundEntityPositionSyncPacket`, which is fine.
-- **The floating kick** needs 80 ticks of not descending with only air around, so it never triggers
-  next to ramps.
+- **The floating kick** needs 80 ticks of not descending with only air around (it looks 0.55 blocks down),
+  so a vertical launch above about 3175 u/s used to trigger it (review B7). SurfCraft counts a move whose
+  vertical step follows CS:S gravity from the last one as falling, not floating.
 
 ## 5. Fall damage pipeline
 
@@ -967,8 +974,8 @@ More traps:
 - **Log oracle.** The server warnings `moved wrongly!` and `moved too quickly!` appear in
   `run/logs/latest.log`. `is sending move packets too frequently` is debug level, so it only shows in
   the debug log.
-- **Server lag.** 6 or more client ticks queued inside one server tick at top speed trigger "moved too
-  quickly" (4.5). Consider `/gamerule player_movement_check false` on surf servers.
+- **Server lag.** 6 or more client ticks queued inside one server tick trigger vanilla's "moved too
+  quickly" above 1312 u/s (4.5); SurfCraft budgets surfers per packet instead. Keep the gamerule on.
 - **Elytra.** With an elytra worn, pressing jump in mid-air starts gliding (`LocalPlayer.aiStep` step 9)
   and drops out of the controller.
 - **Two threads in singleplayer.** The client and integrated server threads both run the common

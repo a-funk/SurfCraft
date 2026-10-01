@@ -2,7 +2,7 @@ package dev.afunk.surfcraft.movement;
 
 import dev.afunk.surfcraft.physics.Brush;
 import dev.afunk.surfcraft.physics.ExactCollide;
-import dev.afunk.surfcraft.physics.Plane;
+import dev.afunk.surfcraft.physics.SourceMovement;
 import dev.afunk.surfcraft.physics.SourceUnits;
 import dev.afunk.surfcraft.physics.V3;
 import java.util.List;
@@ -22,7 +22,7 @@ public final class RampCollision {
 	static final double K = SourceUnits.PER_BLOCK;
 	/** Blocks around a move within which a ramp switches a player to exact collision. */
 	static final double MARGIN = 0.5;
-	/** The CS:S ground probe distance (2 units), as the reach for ramp contact. */
+	/** The CS:S ground probe distance (2 units), as the reach for slope contact. */
 	static final double CONTACT = 2 / K;
 
 	private RampCollision() {
@@ -49,28 +49,35 @@ public final class RampCollision {
 		return got == delta ? movement : BrushWorld.toMinecraftDelta(got);
 	}
 
-	/** A surf ramp within reach of this move (for the sneak edge back-off and the server's jump detection). */
+	/** A surf ramp within reach of this move (for the server's jump detection). */
 	public static boolean near(Player player, Vec3 movement) {
 		return BrushWorld.rampNear(player.level(), player.getBoundingBox().expandTowards(movement).inflate(MARGIN + 0.5));
 	}
 
-	/** The player's box is within 2 units (the CS:S ground probe) of a ramp's exact solid. */
-	public static boolean touchesRamp(Player player) {
-		AABB box = player.getBoundingBox().inflate(CONTACT);
-		if (!BrushWorld.rampNear(player.level(), box)) return false;
-		BlockPos anchor = player.blockPosition();
-		V3 half = BrushWorld.hull(player).add(new V3(2, 2, 2));
-		V3 centre = BrushWorld.toSource(player.position(), anchor).add(new V3(0, 0, BrushWorld.hull(player).z()));
-		for (Brush b : BrushWorld.collect(player.level(), player, box, anchor, true)) if (overlaps(b, centre, half)) return true;
-		return false;
+	/** Blocks beyond a tick's travel within which a ramp brings in the surf controller (and opens the server's surf window). */
+	public static final double SURF_MARGIN = 1.5;
+	/** Ticks on other ground after leaving a ramp before vanilla movement resumes (and the surf window closes). */
+	public static final int GRACE = 10;
+
+	/** A surf ramp within this tick's travel ({@code speed}, blocks) plus {@link #SURF_MARGIN} of the player's box: the controller's rule, on both sides. */
+	public static boolean surfNear(Player player, double speed) {
+		return BrushWorld.rampNear(player.level(), player.getBoundingBox().inflate(speed + SURF_MARGIN));
 	}
 
-	/** The box (centre, half extents) overlaps the brush. */
-	static boolean overlaps(Brush b, V3 c, V3 half) {
-		for (Plane p : b.planes()) {
-			double dist = p.d() + Math.abs(p.nx()) * half.x() + Math.abs(p.ny()) * half.y() + Math.abs(p.nz()) * half.z();
-			if (p.nx() * c.x() + p.ny() * c.y() + p.nz() * c.z() >= dist) return false;
+	/**
+	 * The player rests on a ramp's slope: moved 2 units down (the CS:S ground probe), its box first meets a plane of surf
+	 * steepness (0.01 < normal z < 0.7) on some ramp brush. Flat tops (full cells, a lone cell's flat back) are ground and
+	 * sides are walls, as in CS:S.
+	 */
+	public static boolean onSlope(Player player) {
+		AABB below = player.getBoundingBox().expandTowards(0, -CONTACT, 0);
+		if (!BrushWorld.rampNear(player.level(), below)) return false;
+		BlockPos anchor = player.blockPosition();
+		V3 hull = BrushWorld.hull(player), centre = BrushWorld.toSource(player.position(), anchor).add(new V3(0, 0, hull.z())), down = centre.sub(new V3(0, 0, 2));
+		for (Brush b : BrushWorld.collect(player.level(), player, below, anchor, true)) {
+			double nz = ExactCollide.first(List.of(b), centre, down, hull, ExactCollide.TOL).normal().z();
+			if (nz > 0.01 && nz < SourceMovement.GROUND_NORMAL_Z) return true;
 		}
-		return true;
+		return false;
 	}
 }
