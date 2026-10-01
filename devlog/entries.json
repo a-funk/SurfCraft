@@ -76,5 +76,11 @@
   "title": "The default module: a two-sided surf ramp",
   "caption": "A fresh knife places the classic two-sided 51-degree ramp in one click: Surf Ramp 5:4 on both sides of a ridge, 8 wide, 5 tall, 8 long (224 blocks), cut with the ramp plane formula.",
   "at": "2026-10-01 03:00"
+ },
+ {
+  "file": "shots/14-placement-preview-green-fits-red-is-blocked.jpg",
+  "title": "Placement preview: green fits, red is blocked",
+  "caption": "Holding the knife outlines the box a click would fill, using the server's own placement code: green when it fits, red with the blocked cells outlined, and at a ramp's end the next extension.",
+  "at": "2026-10-01 03:00"
  }
 ]
