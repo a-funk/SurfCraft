@@ -8,6 +8,7 @@
 		"fabric-gametest": [
 			"dev.afunk.surfcraft.gametest.RampGameTests",
 			"dev.afunk.surfcraft.gametest.SurfMovementGameTests",
+			"dev.afunk.surfcraft.gametest.SurfPacketGameTests",
 			"dev.afunk.surfcraft.gametest.KarambitGameTests"
 		],
 		"fabric-client-gametest": [

@@ -137,6 +137,80 @@ class ServerAgreementTest {
 		assertEquals(delta.y(), lifted.y(), 1e-9);
 	}
 
+	/**
+	 * The client's Source trace lets a hull graze a block's vertical edge within DIST_EPSILON, so a published chord can
+	 * overlap a corner by about 0.01 units (here a stone pillar on a 5:4 A-frame, the one such move in 313k ticks of random
+	 * runs among 40 pillars). The server's re-simulation must accept it, not resolve it axis by axis into the pillar (1.59
+	 * blocks off: moved wrongly, and the surfer stopped dead). Moves that are not a client's keep exact collision.
+	 */
+	@Test
+	void cornerGrazingChordIsAccepted() {
+		List<Brush> world = new ArrayList<>(aFrame(5, 4, 6, 140));
+		world.add(1, box(3, 1, 22, 4, 3, 23));
+		V3 from = new V3(169.0752764608131, -851.4930961511183, 39.66118103814514), to = new V3(173.7897062656463, -916.9573705393236, 33.74711988318406);
+		V3 delta = to.sub(from), lift = new V3(0, 0, HULL.z());
+		assertFalse(ExactCollide.clear(world, from.add(lift), to.add(lift), HULL), "the exact chord should graze the pillar");
+		assertEquals(delta, ExactCollide.resolve(world, from, delta, HULL, CONFIG.stepHeight(), false, true));
+		assertFalse(ExactCollide.resolve(world, from, delta, HULL, CONFIG.stepHeight(), false, false).equals(delta));
+	}
+
+	/**
+	 * Float origins can leave the core a fraction of an ulp inside a wall it reached without crossing (4.4e-5 units at
+	 * y = -1169). The publishing sweep must not go deeper from there: it used to skip a brush it started inside and publish
+	 * 0.0012 units into the wall, past the 1e-5 blocks vanilla's new-collision check allows (a server correction).
+	 */
+	@Test
+	void publishingNeverGoesDeeperThanTheCore() {
+		List<Brush> world = new ArrayList<>(aFrame(2, 1, 6, 140));
+		world.add(1, box(-8, 0, 30, 8, 8, 31));
+		double face = -30 * K + HULL.y();
+		for (double depth : new double[] {0, 4.4e-5, 4e-4}) {
+			// DIST_EPSILON above the 2:1 slope and against the wall: up the slope, pressing 0.0012 units into the wall.
+			V3 feet = new V3(44.1463508605957, face - depth, 171.62074279785156);
+			V3 published = TickDriver.sweep(world, feet, new V3(-0.02, -0.0012, 0.04), HULL);
+			assertTrue(face - published.y() <= depth + 1e-5, "started " + depth + " units inside the wall, published " + (face - published.y()));
+			assertEquals(feet.x() - 0.02, published.x(), 1e-6, "stopped instead of sliding along the wall: " + published);
+		}
+	}
+
+	/**
+	 * Auto hop lands and jumps inside one 50 ms tick about 7 times in 10 (the landing substep is not the tick's last), so a
+	 * tick that ends grounded misses most landings. The driver flags the landing and, when the tick ends in the air again,
+	 * publishes the touchdown: a drop with jump held must report the landing on the tick its fall ends, on the ground (the
+	 * controller sends it as onGround, and the server takes the whole fall's damage then).
+	 */
+	@Test
+	void everyLandingIsReported() {
+		List<Brush> floor = List.of(box(-1000, -10, -1000, 1000, 0, 1000));
+		int landings = 0, endedAirborne = 0;
+		for (int i = 0; i < 600; i++) {
+			TickDriver d = new TickDriver();
+			d.core.setOrigin(new V3(0, 0, (4 + i * 0.0191) * K));
+			// A shadow of the core with the same substeps shows which substep lands, and where.
+			SourceMovement shadow = new SourceMovement();
+			shadow.setOrigin(d.core.origin);
+			double lag = 0;
+			V3 touchdown = null;
+			for (int t = 0; t < 400 && touchdown == null; t++) {
+				d.tick(CONFIG, 0, 0, true, 0, HULL, floor);
+				for (lag += TickDriver.TICK; lag >= TickDriver.DT; ) {
+					lag -= TickDriver.DT;
+					boolean airborne = !shadow.grounded;
+					shadow.tick(CONFIG, 0, 0, 0, true, TickDriver.DT, HULL, floor);
+					if (airborne && shadow.grounded && touchdown == null) touchdown = shadow.origin;
+				}
+				assertEquals(shadow.origin, d.core.origin, "the shadow left the driver");
+				assertEquals(touchdown != null, d.landed, "drop " + i + " tick " + t);
+			}
+			assertTrue(touchdown != null, "drop " + i + " never landed");
+			assertEquals(touchdown.z(), d.published.z(), 0, "drop " + i + ": the landing tick is not published on the ground");
+			landings++;
+			if (!d.core.grounded) endedAirborne++;
+		}
+		System.out.printf("%d landings with jump held, %d of their ticks ended airborne (hopped)%n", landings, endedAirborne);
+		assertTrue(endedAirborne > landings / 2, "the hops should mostly leave the ground within the landing tick");
+	}
+
 	/** Walls stay walls: a move through a 3-block wall is not lifted over at walking speed. */
 	@Test
 	void liftDoesNotPassWalls() {

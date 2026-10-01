@@ -5,7 +5,8 @@ import java.util.List;
 /**
  * CS:S walking and air movement for one player, ported from the surf repo's {@code SourcePlayer.move} (the
  * {@code cssMovement} path without duck, ladders, water, noclip, base velocity, moving ground, materials,
- * gravity scale or lagged movement), in Source units and axes. One {@link #tick} is one user command.
+ * gravity scale or lagged movement) plus CS:S's quadrant ground check, which that port lacks, in Source units and axes.
+ * One {@link #tick} is one user command.
  */
 public final class SourceMovement {
 	/** Walkable ground: normal z at least this (and rising at most 140 units/s). */
@@ -26,17 +27,11 @@ public final class SourceMovement {
 	public V3 surfNormal;
 	/** This tick's collision contacts in order, empty when the move was unobstructed. */
 	public List<HullTrace> contacts = List.of();
-	/** This tick's ground probe: the hull swept 2 units down from where it ended. */
+	/** This tick's ground probe: the whole hull swept 2 units down from where it ended (the quarter boxes' are not kept). */
 	public HullTrace ground;
 
 	public void setOrigin(V3 feet) {
 		origin = feet.toFloat();
-	}
-
-	/** A contact steeper than a surf ramp (a wall, overhang or ceiling) this tick. */
-	public boolean hitWall() {
-		for (HullTrace c : contacts) if (c.normal().z() <= 0.01) return true;
-		return false;
 	}
 
 	/**
@@ -121,13 +116,32 @@ public final class SourceMovement {
 		if (wasGrounded && (movement.x() != 0 || movement.y() != 0)) next = SourceMove.stayOnGround(next, c.stepHeight(), trace);
 
 		ground = trace.apply(next, next.sub(new V3(0, 0, 2)));
-		grounded = ground.fraction() < 1 && ground.normal().z() >= GROUND_NORMAL_Z && velocity.z() <= 140;
+		grounded = velocity.z() <= 140 && (walkable(ground) || quadrantGround(world, next, hullHalf));
 		setOrigin(next.sub(new V3(0, 0, hullHalf.z())));
 		// CategorizePosition lowers air control while rising slowly near the apex; fast ascent and falling reset it.
 		surfaceFriction = !grounded && velocity.z() > 0 && velocity.z() <= 140 ? 0.25f : 1;
 		for (HullTrace hit : contacts) if (hit.normal().z() > 0.01 && hit.normal().z() < GROUND_NORMAL_Z) surfNormal = hit.normal();
 		vz = grounded ? 0 : velocity.z() - gravity * dt / 2;
 		velocity = new V3(velocity.x(), velocity.y(), vz).toFloat();
+	}
+
+	private static boolean walkable(HullTrace t) {
+		return t.fraction() < 1 && t.normal().z() >= GROUND_NORMAL_Z;
+	}
+
+	/**
+	 * TryTouchGroundInQuadrants (CategorizePosition, when the whole hull's probe finds no walkable ground): each quarter of
+	 * the hull, in CS:S's order (-x -y, +x +y, -x +y, +x -y), probes the same 2 units down; the first walkable hit grounds
+	 * the player. At a ramp's toe it finds the floor under the down-slope quarter while the hull's back edge still rides
+	 * the slope.
+	 */
+	private static boolean quadrantGround(List<Brush> world, V3 centre, V3 half) {
+		V3 quarter = new V3(half.x() / 2, half.y() / 2, half.z());
+		for (double[] q : new double[][] {{-1, -1}, {1, 1}, {-1, 1}, {1, -1}}) {
+			V3 c = centre.add(new V3(q[0] * quarter.x(), q[1] * quarter.y(), 0));
+			if (walkable(SourceHull.trace(world, c, c.sub(new V3(0, 0, 2)), quarter))) return true;
+		}
+		return false;
 	}
 
 	/** Accelerates only the component along the wish direction, keeping perpendicular momentum. */

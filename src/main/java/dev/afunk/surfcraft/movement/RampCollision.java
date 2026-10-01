@@ -24,6 +24,11 @@ public final class RampCollision {
 	static final double MARGIN = 0.5;
 	/** The CS:S ground probe distance (2 units), as the reach for ramp contact. */
 	static final double CONTACT = 2 / K;
+	/**
+	 * The longest move (blocks) handled here: twice the controller's top speed (3500 units/s on each axis, 7.7 blocks a
+	 * tick), as a tick's 3-4 substeps plus its publishing sweep can cover up to 0.08 s of travel.
+	 */
+	static final double MAX_MOVE = 2 * 3500 * Math.sqrt(3) * 0.05 / K;
 
 	private RampCollision() {
 	}
@@ -31,12 +36,13 @@ public final class RampCollision {
 	/**
 	 * {@code Entity.collide} for a player: the controller's trusted movement, or the exact resolution near ramps, or null
 	 * (vanilla) away from them. The server's re-simulation ({@link MoverType#PLAYER}) may lift the box over an edge the
-	 * client crossed within the tick.
+	 * client crossed within the tick. Moves longer than the controller can publish in a tick are left to vanilla: the
+	 * lifted region (and its cost) grows with the square of the length.
 	 */
 	public static @Nullable Vec3 collide(Player player, Vec3 movement, MoverType type) {
 		Vec3 trusted = ((SurfPlayer) player).surfcraft$trust();
 		if (trusted != null) return trusted;
-		if (player.noPhysics) return null;
+		if (player.noPhysics || movement.lengthSqr() > MAX_MOVE * MAX_MOVE) return null;
 		boolean lift = type == MoverType.PLAYER;
 		double up = player.maxUpStep() + (lift ? movement.horizontalDistance() / 2 : 0);
 		AABB reach = player.getBoundingBox().expandTowards(movement).expandTowards(0, up, 0).inflate(MARGIN);

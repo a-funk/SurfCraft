@@ -69,7 +69,7 @@ public final class BrushWorld {
 		CollisionContext context = entity == null ? CollisionContext.empty() : CollisionContext.of(entity);
 		List<double[]> boxes = new ArrayList<>();
 		List<RampBrushes.Placed> cells = new ArrayList<>();
-		Map<List<Long>, double[]> slopes = new LinkedHashMap<>();
+		Map<RampBrushes.Slope, double[]> slopes = new LinkedHashMap<>();
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		// One block more below and around: shapes taller than their cell (fences, walls) reach into the region.
 		int x0 = floor(region.minX) - 1, y0 = floor(region.minY) - 1, z0 = floor(region.minZ) - 1, x1 = floor(region.maxX) + 1, y1 = floor(region.maxY),
@@ -83,7 +83,7 @@ public final class BrushWorld {
 				RampCell cell = SurfRampBlock.cell(state);
 				RampBrushes.Placed placed = new RampBrushes.Placed(x - ax, y - ay, z - az, f.getStepX(), f.getStepZ(), cell);
 				cells.add(placed);
-				if (!cell.full()) slopes.computeIfAbsent(slopeKey(placed), k -> slopePlane(placed));
+				if (!cell.full()) slopes.computeIfAbsent(placed.slope(), k -> slopePlane(placed));
 				continue;
 			}
 			if (rampsOnly) continue;
@@ -141,13 +141,6 @@ public final class BrushWorld {
 			if (Math.abs(top - s[3]) < 1e-9) planes.add(new Plane(s[0], -s[2], s[1], s[3] * K));
 		}
 		return new Brush(planes, new V3(b[0] * K, -b[5] * K, b[1] * K), new V3(b[3] * K, -b[2] * K, b[4] * K));
-	}
-
-	/** Identifies a slope: facing, p:q and the plane constant every cell on it shares. */
-	private static List<Long> slopeKey(RampBrushes.Placed c) {
-		RampCell r = c.cell();
-		long u = c.fx() > 0 ? c.x() : c.fx() < 0 ? -c.x() - 1 : c.fz() > 0 ? c.z() : -c.z() - 1;
-		return List.of((long) c.fx(), (long) c.fz(), (long) r.p(), (long) r.q(), r.cut() + r.p() * u + (long) r.q() * c.y());
 	}
 
 	/** The cell's slope plane in anchor-relative Minecraft coordinates. */

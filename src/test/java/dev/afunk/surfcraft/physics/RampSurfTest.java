@@ -86,6 +86,65 @@ class RampSurfTest {
 		assertTrue(a.origin.y() < -2 * K - 0.95 * 600 * TICKS * Recording.DT, "did not travel along the ramp");
 	}
 
+	/**
+	 * The seam stress: 300 random surf runs per slope (strafes, turns, hops, from anywhere on the slope down to the floor
+	 * at its toe) on a cell-built ramp and on the same ramp as one brush, both on a floor: no run may part by 0.01 units.
+	 */
+	@ParameterizedTest(name = "{0}:{1}")
+	@CsvSource({"5, 4", "2, 1"})
+	void randomRunsOnCellsMatchOneBrush(int p, int q) {
+		List<Brush> cells = new ArrayList<>(List.of(ServerAgreementTest.box(-40, -1, -20, 40, 0, 160))), mono = new ArrayList<>(cells);
+		cells.addAll(RampBrushes.of(cells(p, q, 6, 140)));
+		mono.addAll(monolith(p, q, 6, 140));
+		Random random = new Random(p * 31 + q);
+		int ticks = 0, grounded = 0;
+		for (int run = 0; run < 300; run++) {
+			SourceMovement a = new SourceMovement(), b = new SourceMovement();
+			a.setOrigin(ServerAgreementTest.onSlope(p, q, 6, 0.5 + random.nextDouble() * 3.5, 5, 0.02));
+			a.velocity = new V3(-random.nextDouble() * 900, -300 - random.nextDouble() * 2500, random.nextDouble() * 300 - 150);
+			b.setOrigin(a.origin);
+			b.velocity = a.velocity;
+			double yaw = -90, turn = 0, side = 400;
+			boolean jump = false;
+			for (int t = 0; t < 300 && a.origin.z() > -K && a.origin.y() > -150 * K; t++) {
+				if (random.nextInt(10) == 0) side = random.nextInt(4) == 0 ? -400 : random.nextInt(3) == 0 ? 0 : 400;
+				if (random.nextInt(15) == 0) turn = random.nextGaussian() * 2;
+				if (random.nextInt(20) == 0) jump = !jump;
+				yaw += turn;
+				a.tick(ServerAgreementTest.CONFIG, 0, side, yaw, jump, Recording.DT, ServerAgreementTest.HULL, cells);
+				b.tick(ServerAgreementTest.CONFIG, 0, side, yaw, jump, Recording.DT, ServerAgreementTest.HULL, mono);
+				assertTrue(a.origin.sub(b.origin).length() < 0.01 && a.velocity.sub(b.velocity).length() < 0.01,
+						"run " + run + " tick " + t + ": cells " + a.origin + " " + a.velocity + " vs one brush " + b.origin + " " + b.velocity + ", contacts " + a.contacts);
+				ticks++;
+				if (a.grounded) grounded++;
+			}
+		}
+		System.out.printf("%d:%d: 300 random runs, %d ticks (%d grounded), cells and one brush never part%n", p, q, ticks, grounded);
+	}
+
+	/**
+	 * CS:S's CategorizePosition grounds the player through TryTouchGroundInQuadrants when the whole hull finds no walkable
+	 * ground: sliding down a 5:4 ramp onto the floor, at tick 25 the hull's down-slope quarters are over the floor 1.8
+	 * units up while its back edge still rides the slope (the whole hull's probe hits the slope). CS:S is grounded there
+	 * and takes friction from then on (384 units/s after 40 ticks); the port used to stay airborne a tick longer (409).
+	 */
+	@Test
+	void quadrantsGroundTheToe() {
+		List<Brush> world = new ArrayList<>(List.of(ServerAgreementTest.box(-40, -1, -20, 40, 0, 160)));
+		world.addAll(RampBrushes.of(cells(5, 4, 6, 140)));
+		SourceMovement m = new SourceMovement();
+		m.setOrigin(ServerAgreementTest.onSlope(5, 4, 6, 1.0, 10, 0.02));
+		m.velocity = new V3(0, -900, 0);
+		for (int t = 0; t < 25; t++) m.tick(ServerAgreementTest.CONFIG, 0, 0, -90, false, Recording.DT, ServerAgreementTest.HULL, world);
+		assertFalse(m.grounded, "grounded before the toe");
+		m.tick(ServerAgreementTest.CONFIG, 0, 0, -90, false, Recording.DT, ServerAgreementTest.HULL, world);
+		assertTrue(m.grounded, "tick 25: feet " + m.origin.z() + " units above the floor, not grounded");
+		assertEquals(4 / Math.hypot(5, 4), m.ground.normal().z(), 1e-9, "the whole hull's probe should hit the slope");
+		assertEquals(1.8, m.origin.z(), 0.01);
+		for (int t = 26; t < 40; t++) m.tick(ServerAgreementTest.CONFIG, 0, 0, -90, false, Recording.DT, ServerAgreementTest.HULL, world);
+		assertEquals(383.6, Math.hypot(m.velocity.x(), m.velocity.y()), 0.1);
+	}
+
 	/** A 1:1 (45 degree) slope has normal z 0.707 >= 0.7: walkable ground, which is why surf ramps are steeper. */
 	@Test
 	void fortyFiveDegreeSlopeIsGround() {
