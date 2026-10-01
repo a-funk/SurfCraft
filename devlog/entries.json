@@ -46,5 +46,11 @@
   "title": "One block of each type, in every facing",
   "caption": "Single ramp blocks facing north, east, south and west. Behind them, the cross-section of the joined showcase: a 51-degree side and a 63-degree side meeting at the ridge.",
   "at": "2026-10-01 01:56"
+ },
+ {
+  "file": "shots/09-first-surf-in-game.jpg",
+  "title": "First surf in game",
+  "caption": "The CS:S movement core now drives the player in Minecraft: dropped onto a 51-degree ramp at 788 units/s while holding the strafe key into the slope, the player glides along it. The speedometer above the hotbar shows horizontal speed in units/s.",
+  "at": "2026-10-01 02:36"
  }
 ]
