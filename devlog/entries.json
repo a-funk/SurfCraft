@@ -118,5 +118,11 @@
   "title": "Bug fixed: sinking through a ramp",
   "caption": "Found by the in-game test: a creative player flying into a slope could sink through it a hair per tick, because the exact collision stopped boxes a rounding tolerance inside. Now boxes stop where they touch: 3000 presses into the slope, zero penetration.",
   "at": "2026-10-01 03:45"
+ },
+ {
+  "file": "shots/21-a-real-mod-icon.jpg",
+  "title": "A real mod icon",
+  "caption": "The Fabric placeholder icon is replaced with SurfCraft's own: a surf ramp in 3/4 view with the Karambit, drawn in code as 32x32 pixel art.",
+  "at": "2026-10-01 04:08"
  }
 ]
