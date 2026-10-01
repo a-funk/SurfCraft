@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "surfcraft:steep_surf_ramp"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "surfcraft:blocks/steep_surf_ramp"
+}

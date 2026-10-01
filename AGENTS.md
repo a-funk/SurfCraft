@@ -6,7 +6,10 @@ A Fabric mod for Minecraft Java 26.3: CS:S surf ramps and CS:S surf movement. `M
 ## Build, test, run
 - JDK 25: `export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home`
   (`/usr/bin/java` is the macOS stub and fails).
-- `./gradlew build` builds and runs the JUnit tests; `./gradlew test` runs only the tests.
+- `./gradlew build` builds and runs the JUnit tests and the server game tests; `./gradlew test` runs only the JUnit
+  tests, `./gradlew runGameTest` only the game tests (report: `build/gametest/server-tests.xml`).
+- `./gradlew runClientGameTest` opens a client window, builds a ramp showcase in a superflat world and saves
+  screenshots to `build/gametest/screenshots/`. Game tests live in `src/gametest` (not in the mod jar).
 - `./gradlew runClient` starts the dev client (offline account, `run/` folder).
 - Physics reference replays need the user's own map geometry in `local-content/` (gitignored):
   `node tools/extract-kitsune-brushes.mjs`. Without it those cases skip; never commit map content.

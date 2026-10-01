@@ -1,0 +1,18 @@
+{
+	"schemaVersion": 1,
+	"id": "surfcraft-gametest",
+	"version": "1.0.0",
+	"name": "SurfCraft game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"dev.afunk.surfcraft.gametest.RampGameTests"
+		],
+		"fabric-client-gametest": [
+			"dev.afunk.surfcraft.gametest.RampShowcaseClientTest"
+		]
+	},
+	"depends": {
+		"surfcraft": "*"
+	}
+}

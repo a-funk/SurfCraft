@@ -1,0 +1,5 @@
+{
+  "fabric:type": "surfcraft:ramp",
+  "parent": "minecraft:block/stairs",
+  "block": "surfcraft:surf_ramp"
+}
