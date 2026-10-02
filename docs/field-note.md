@@ -7,7 +7,7 @@ game_version: "Minecraft Java 26.3 + Fabric Loader 0.19.5 + Fabric API 0.161.0+2
 platform: macos
 engine: java
 route: loader-api
-tools: ["Fabric Loom 1.18.2", "Fabric API game tests + client game tests", "Mixin + MixinExtras", "JUnit 6", "objdump (CS:S server binary)", "um sprite / um kb", "Railway (public dev log)"]
+tools: ["Fabric Loom 1.18.2", "Fabric API game tests + client game tests", "Mixin + MixinExtras", "JUnit 6", "objdump (CS:S server binary)", "um kb", "Railway (public dev log)"]
 anti_cheat: "none: single player and servers the user runs; the mod must be on both sides (registry sync)"
 status: working
 agents:
@@ -22,7 +22,8 @@ tags: [physics-port, trace-replay, movement, mixin, custom-block-model, game-tes
 > A Fabric mod for Minecraft Java 26.3 that adds CS:S/CS:GO surf: craftable 51° and 63° ramp blocks that join
 > into one smooth slope of any size, a Karambit that copies, extends and places ramp modules, and CS:S surf
 > movement (air strafing, ramp clipping, auto hop) ported from a TypeScript CS:S port and replayed against real
-> CS:S server recordings. Verified in the real client and on a real dedicated server by Fabric client game tests.
+> CS:S server recordings. Verified in the real client and on an in-process dedicated server over a real local connection by Fabric client
+> game tests.
 
 ## Setup
 - Minecraft Java **26.3** (unobfuscated: Mojang names, no mappings), Fabric Loader 0.19.5, Fabric API
@@ -69,7 +70,7 @@ the client and the server only needs collision that agrees with it.
 3. `./gradlew build` → `build/libs/surfcraft-<v>.jar`; for players: Fabric Loader + Fabric API + the jar in `mods`.
 
 ## Verification
-- **Trace replay (physics):** 24 recordings from a real CS:S server (flat movement, walls, a corner, the
+- **Trace replay (physics):** 23 recordings (24 replays) from a real CS:S server (flat movement, walls, a corner, the
   surf_kitsune ramp) replayed through the Java core from one initial state, no corrections: worst 0.007 units,
   0.0003 u/s. Map geometry is extracted from the user's own BSP into a gitignored folder.
 - **Seam oracle:** a ramp built from blocks must surf bit-identically to one brush (300 random runs per slope).
@@ -82,7 +83,7 @@ the client and the server only needs collision that agrees with it.
 - **Capstone playthrough:** a client game test crafts the Karambit in the crafting UI, builds a survival course with
   it by look + right-click (a 96-block ramp from 12 clicks, a gap, a second ramp), and surfs it twice with keyboard
   and mouse: 10.6 s, 123 blocks, 680 u/s, full health, 0 server corrections. Recorded as a clip.
-- **Adversarial review:** five reviewers + skeptics found 1 blocker and 13 majors after the first green build;
+- **Adversarial review:** five reviewers + skeptics found 1 blocker and 9 majors after the first green build;
   all fixed with regression tests. Not verified: other GPUs/OSes, a real network with real latency.
 
 ## Gotchas

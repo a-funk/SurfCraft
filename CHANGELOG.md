@@ -28,7 +28,7 @@ First public release, for Minecraft Java Edition 26.3 with Fabric Loader 0.19.5+
   Slow Falling take over from surf physics while they last.
 
 ### Verified
-- The movement core replays 24 recordings from a real CS:S server (build 11003710) with a worst error of 0.007
+- The movement core replays 23 recordings from a real CS:S server (build 11003710) with a worst error of 0.007
   units in position and 0.0003 u/s in velocity. Ten of them, on surf_kitsune, need a local copy of that map's
   geometry and skip without it.
 - Seams: with merged brushes, 0 of 300 random surf runs per slope differ from surfing one seamless brush (41 to 59

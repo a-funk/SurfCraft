@@ -40,7 +40,7 @@ def add(image, title, caption, video=None, poster=None):
         # Every update goes live right away: commit just the dev log, then publish it.
         repo = ["git", "-C", str(ROOT.parent)]
         subprocess.run(repo + ["add", "devlog"], check=False)
-        subprocess.run(repo + ["-c", "user.name=Alex Funk", "-c", "user.email=11507011+a-funk@users.noreply.github.com", "commit", "-q",
+        subprocess.run(repo + ["commit", "-q",
                                "-m", f"Dev log: {title}\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>",
                                "--", "devlog"], check=False)
         deploy()
@@ -108,13 +108,18 @@ main {{ max-width: 1100px; margin: auto; padding: 16px; display: grid; gap: 20px
 figure {{ margin: 0; background: var(--card); border-radius: 10px; overflow: hidden; }}
 figure img, figure video {{ display: block; width: 100%; height: auto; }}
 .featured {{ margin-top: 20px; }}
+footer {{ max-width: 1100px; margin: auto; padding: 8px 16px 40px; color: var(--muted); font-size: 13px; }}
+footer a {{ color: var(--accent); }}
 figcaption {{ padding: 12px 16px; }} figcaption p {{ margin: 4px 0 0; color: var(--muted); }}
 .n {{ color: var(--accent); font-weight: 700; margin-right: 6px; }} .at {{ float: right; color: var(--muted); font-size: 13px; }}
 </style></head><body>
 <header><h1>Surf<span>Craft</span> dev log</h1><p>CS:S surf ramps and surf physics for Minecraft 26.3, built step by step. Updated {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}.</p>{featured}</header>
 <main>
 {cards}
-</main></body></html>
+</main>
+<footer><p>NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Not affiliated with
+or endorsed by Valve.</p><p>Source and license: <a href="https://github.com/a-funk/SurfCraft">github.com/a-funk/SurfCraft</a>
+(MIT).</p></footer></body></html>
 """)
 
 

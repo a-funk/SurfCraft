@@ -1,5 +1,7 @@
 # SurfCraft
 
+Instructions for coding agents working on this repo (the author's macOS/Homebrew setup).
+
 A Fabric mod for Minecraft Java 26.3: CS:S surf ramps and CS:S surf movement. `MODLOG.md` is the journal
 (versions, decisions, evidence, gotchas); read it before working and add to it when you learn something.
 
@@ -44,6 +46,6 @@ orchestrator with `tools/devlog.py deploy`). Look at a screenshot before adding 
 matplotlib. Keep every file inside this folder, never in `~/`.
 
 ## Rules
-- Physics fidelity is the top priority. The surf repo (`/Users/funk/code/sandbox/surf`) and its CS:S
+- Physics fidelity is the top priority. The author's surf repo (private) and its CS:S
   recordings are the reference; do not loosen tolerances to make a regression pass.
 - Skills for this repo are in `.claude/skills/` (universal-modder, MIT, pinned; plus obstacle-protocol).

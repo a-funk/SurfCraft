@@ -9,7 +9,7 @@ their causes, and the next step. Newest entries at the bottom of each section.
   (`./gradlew runClient`, offline dev account, its own `run/` folder). No user saves are touched.
 - **Idea:** CS:S/CS:GO surf in Minecraft. Craftable surf ramp blocks that join into ramps of any size, and
   movement that is CS:S's own surf physics (air strafing, ramp clipping), ported from the browser port in
-  `/Users/funk/code/sandbox/surf` (which replays 54 real CS:S server recordings).
+  the author's surf repo (private; it replays 54 real CS:S server recordings).
 - **Online/offline:** single player and servers the user runs. The mod must be on the server and client
   (registry sync refuses mismatched clients), so it cannot be used as a client-side movement cheat.
 - **Done means:** the jar builds; the physics core replays real CS:S recordings within the surf repo's
@@ -81,7 +81,7 @@ with it and fall damage that ignores ramp contact.
 ## Wave A results (2026-10-01)
 ### Physics core (`dev.afunk.surfcraft.physics`)
 - Java port of the surf repo's cssMovement path + BSP hull trace, in Source units. Replays against the real CS:S
-  server: 14 flat recordings (worst 0.000183 u, 0.000046 u/s, stamina exact, grounded exact every tick) and
+  server: 13 flat recordings (14 replays with a CRLF parse) (worst 0.000183 u, 0.000046 u/s, stamina exact, grounded exact every tick) and
   4 surf_kitsune ramp recordings (worst 0.006348 u, 0.000671 u/s; 53 and 79 surf-contact ticks). 17 recordings
   that duck are skipped (duck is not ported); route recordings need triggers/teleports.
 - Kitsune wall recordings pass only with `func_brush *57` modelled as its compiled VPhysics hull (its raw planes
@@ -140,7 +140,7 @@ with it and fall damage that ignores ramp contact.
   2. Silent server rejections: the surf repo trace's Quake 2 entry sentinel (-1) let a hull creep up to 1/32
      unit into a plane; `isEntityCollidingWithAnythingNew` then rejects without logging -> Source's
      `NEVER_UPDATED` (-9999). All 23 recording replays are identical before and after. (The browser port in
-     /Users/funk/code/sandbox/surf still uses -1.)
+     the author's surf repo still uses -1.)
   3. Sinking through ramps: exact sweeps stopped a box a tolerance inside the slope -> tolerance only decides a
      hit; boxes stop at contact (3000-press regression test).
   4. Any damage (markHurt) synced the server's zero-input velocity and stopped surfers dead -> e3 sets the
@@ -167,8 +167,8 @@ with it and fall damage that ignores ramp contact.
 
 ## Wave C review (2026-10-01)
 Five adversarial reviewers (physics fidelity; game states; multiplayer/server; blocks/Karambit/UX; simplicity
-and packaging), each finding reproduced, each lens re-checked by a skeptic. 38 findings: 1 blocker, 13 major,
-22 minor, 2 refuted. Full record with evidence: `docs/dev/review-wave-c.md`. Highlights:
+and packaging), each finding reproduced, each lens re-checked by a skeptic. 38 findings: 1 blocker, 9 major,
+26 minor, 2 refuted. Full record with evidence: `docs/dev/review-wave-c.md`. Highlights:
 - **Fidelity (A1):** the port (and the surf repo) lacks CS:S's `TryTouchGroundInQuadrants`, found in the CS:S
   build 11003710 server binary (`server_srv.so`, unstripped): quarter-hull ground probes after a failed full-hull
   probe. Without it surfers stay airborne a tick longer at ramp toes. Also the binary's box-trace tie rule (A4)
@@ -201,6 +201,8 @@ server game tests + all client game tests (single player and dedicated server: 0
   goes deeper into a brush than the core already is. Moves over 15.4 blocks go to vanilla (C7 cost bound).
 - Landing ticks report onGround to the server, publishing the touchdown point: auto hop no longer skips fall
   damage (24/24 drop heights deal the same damage with and without jump on the real packet path).
+- The controller's local frame now rebases at 4096 units (was 8192): a float origin's half-ulp then stays inside the
+  server's 1e-5-block new-collision deflation (review A3).
 ### Server and controller (B1/C1 blocker, B3-B9, C3-C6)
 - `movement.Surfing`: a server-side surf window (opened by a move within the controller's ramp reach, kept while
   airborne, closed after 10 ground moves or any teleport). In it: each move packet gets vanilla's single-packet

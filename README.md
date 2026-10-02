@@ -1,5 +1,7 @@
 # SurfCraft
 
+*NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Not affiliated with or endorsed by Valve.*
+
 Counter-Strike: Source surf in Minecraft 26.3: craft surf ramps, build courses with a Karambit, and surf them with
 CS:S movement checked against a real CS:S server.
 
@@ -19,8 +21,9 @@ setup under [Play](#play)). Free and open source (MIT).
 - **CS:S surf physics** near ramps and in the air after them: sv_airaccelerate 150, gravity 800, knife speed 250,
   66.67 Hz movement ticks, Source's ramp clipping, ground checks and box trace. Walking away from ramps is vanilla.
 - **Speedometer** in units/s while you surf (hidden with F1).
-- Single player and servers: install it on both. Servers keep their normal movement checks; surfers get a
-  speed budget that fits CS:S speeds, so lag doesn't rubber-band them.
+- Single player and servers: install it on both. Servers keep vanilla's movement checks; for players surfing
+  near ramps the mod adapts three of them to CS:S movement (a per-packet speed budget, CS:S airtime not counted as
+  flying, exact ramp collision), so packet bursts from hitches or server stalls don't rubber-band surfers.
 
 ## Play
 **In the official launcher.**
@@ -32,9 +35,12 @@ setup under [Play](#play)). Free and open source (MIT).
 To uninstall, remove the jar. If something goes wrong, the game log is `logs/latest.log` in your Minecraft folder:
 attach it to an [issue](https://github.com/a-funk/SurfCraft/issues).
 
-**Build from source.** With JDK 25, `./gradlew build` writes the jar to `build/libs/` (and runs the tests), and
-`./gradlew runClient` starts Minecraft with the mod in an offline dev profile, no launcher needed (its files stay
-in `run/`). On a Mac, double-clicking `Start SurfCraft.command` does the same (Java 25: `brew install openjdk@25`).
+**Build from source.** With JDK 25, `./gradlew build` writes the jar to `build/libs/` and runs the tests (its
+server game tests accept the [Minecraft EULA](https://aka.ms/MinecraftEULA) for the test server).
+
+**Dev client.** You need to own Minecraft: Java Edition. `./gradlew runClient` starts Fabric Loom's offline dev
+client with the mod (its files stay in `run/`); on a Mac, double-click `Start SurfCraft.command` (Java 25:
+`brew install openjdk@25`).
 
 ## Recipes
 | Item | Recipe |
@@ -46,9 +52,10 @@ in `run/`). On a Mac, double-clicking `Start SurfCraft.command` does the same (J
 
 ## Building ramps
 - A ramp block faces you when you place it, like stairs: the slope runs down toward you.
-- Place the next block against the ramp you're building and it continues that ramp's slope. Build in columns of
-  two blocks, each column a row higher than the one in front (the 51° ramp needs an extra step every four
-  columns: fill any notch you see and the block shapes itself to fit). Anything solid works under the slope.
+- Place the next block against the ramp you're building and it continues that ramp's slope. For the 51° Surf
+  Ramp, build columns of two blocks, each a row higher than the one in front, with an extra step every four
+  columns; for the 63° Steep Surf Ramp each column is two rows higher. Fill any notch you see and the block shapes
+  itself to fit. Anything solid works under the slope.
 - **Karambit:**
   - **Copy:** sneak + right-click a ramp. The knife copies that ramp and everything in its box (supports
     included), up to 32 blocks wide and tall; along a longer ramp it copies a 32-block piece.
@@ -73,21 +80,23 @@ in `run/`). On a Mac, double-clicking `Start SurfCraft.command` does the same (J
 
 ## How it's built and tested
 - `dev.afunk.surfcraft.physics` reimplements CS:S movement (following the author's browser surf port) in
-  Source units. It replays 24 recordings from a real CS:S server (running, jumping, strafing, walls, a corner and
-  a surf_kitsune ramp) with a worst position error of 0.007 units; a few details (quadrant ground check, velocity
+  Source units. It replays 23 recordings from a real CS:S server (13 on flat ground; 10 on surf_kitsune's ramp,
+  walls and a corner) with a worst position error of 0.007 units; the 10 surf_kitsune replays need map geometry
+  extracted with the author's surf tools and skip without it. A few details (quadrant ground check, velocity
   clipping, box-trace ties) were matched to that server build.
 - Ramp blocks become merged collision brushes, so seams between blocks don't rampbug.
 - The client runs the physics; the server re-checks every move against the same exact collision. Tested in
-  survival in single player and on a dedicated server at up to 2200 units/s, with client hitches of 10 packets
-  per server tick: no corrections, no rubber-banding.
+  survival in single player and on an in-process dedicated server over a local connection at up to 2200 units/s,
+  with client hitches of 10 packets per server tick: no corrections, no rubber-banding. Real-network latency is
+  untested.
 - `./gradlew build` runs the JUnit and server game tests; `./gradlew runClientGameTest` runs the in-game tests
   (they open a window). Details, decisions and gotchas: `MODLOG.md`, `docs/dev/`, `AGENTS.md`.
 
 ## License
-Free and open source under the [MIT License](LICENSE). Valve's Source 1 SDK License is acknowledged for any part of
-the movement code that is a modification of the Source SDK: its text and notices are in `LICENSES/` and in the jar,
-and SurfCraft stays free of charge as that license requires. Details: `THIRD_PARTY_NOTICES.md`. Not affiliated
-with Valve, Mojang or Microsoft.
+Free and open source under the [MIT License](LICENSE), except the routines derived from Valve's Source SDK 2013
+game movement (`SourceMovement.java`, `SourceMove.java` and the CheckStuck step in `TickDriver.java`), which are
+redistributed under Valve's Source 1 SDK License: free of charge, with its text and notices (`LICENSES/`, also in the
+jar). Details: `THIRD_PARTY_NOTICES.md`. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Not affiliated with or endorsed by Valve.
 
 ## Credits
 Built with Claude Code (Claude Opus 5.5) using the [universal-modder](https://github.com/rehan-remade/universal-modder)

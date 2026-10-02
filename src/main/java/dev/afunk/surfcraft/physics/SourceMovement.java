@@ -1,3 +1,4 @@
+// Contains routines derived from Valve's Source SDK 2013 game movement: see THIRD_PARTY_NOTICES.md (Source 1 SDK License, free of charge).
 package dev.afunk.surfcraft.physics;
 
 import java.util.List;

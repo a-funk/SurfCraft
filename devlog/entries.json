@@ -32,7 +32,7 @@
  {
   "file": "shots/06-java-physics-vs-the-real-cs-s-server.jpg",
   "title": "Java physics vs the real CS:S server",
-  "caption": "The physics port replays a recording from a real Counter-Strike: Source server on surf_kitsune's ramp: same inputs, same ramp, worst difference 0.006 units over 100 ticks (tolerance 0.05). 18 engine recordings pass this way.",
+  "caption": "The physics port replays a recording from a real Counter-Strike: Source server on surf_kitsune's ramp: same inputs, same ramp, worst difference 0.006 units over 100 ticks (tolerance 0.05). 17 recordings (18 replays) pass this way.",
   "at": "2026-10-01 01:56"
  },
  {
@@ -104,7 +104,7 @@
  {
   "file": "shots/18-2200-units-s-on-a-dedicated-server.jpg",
   "title": "2200 units/s on a dedicated server",
-  "caption": "The same surf run against a real dedicated server over the network, in survival, on the 63-degree ramp at 2200 units/s. 254 blocks along the ramp, plus four fast crossings over an apex: the server corrected nothing and logged no 'moved wrongly'.",
+  "caption": "The same surf run against an in-process dedicated server over a real local connection, in survival, on the 63-degree ramp at 2200 units/s. 254 blocks along the ramp, plus four fast crossings over an apex: the server corrected nothing and logged no 'moved wrongly'.",
   "at": "2026-10-01 03:43"
  },
  {
