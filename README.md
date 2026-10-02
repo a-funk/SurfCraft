@@ -1,10 +1,15 @@
 # SurfCraft
 
-Counter-Strike: Source surf in Minecraft 26.3 (Fabric). Craft surf ramps, build them to any size, stamp out
-whole ramp modules with a Karambit, and surf them with CS:S movement: air strafing, ramp clipping, auto bunny hop,
-reimplemented and checked against recordings from a real CS:S server.
+Counter-Strike: Source surf in Minecraft 26.3: craft surf ramps, build courses with a Karambit, and surf them with
+CS:S movement checked against a real CS:S server.
 
-Live dev log (screenshots and clips of the build, step by step): https://devlog-production-6292.up.railway.app
+![Third-person surf along a SurfCraft ramp, across a gap and over a second ramp to the finish pad, the speedometer climbing from 362 to 680 units/s](docs/media/surfcraft.gif)
+
+**Download:** [the latest release](https://github.com/a-funk/SurfCraft/releases/latest) (Fabric, Minecraft 26.3;
+setup under [Play](#play)). Free and open source (MIT).
+
+**Dev log:** [the build step by step](https://devlog-production-6292.up.railway.app) in screenshots and clips, and
+[the montage](https://devlog-production-6292.up.railway.app/montage.mp4) (2 min).
 
 ## What's in it
 - **Surf Ramp** (51°, the most common angle on KSF surf maps) and **Steep Surf Ramp** (63°). Blocks join into
@@ -18,15 +23,18 @@ Live dev log (screenshots and clips of the build, step by step): https://devlog-
   speed budget that fits CS:S speeds, so lag doesn't rubber-band them.
 
 ## Play
-**Quick start (no launcher needed).** On a Mac with Java 25 (`brew install openjdk@25`), double-click
-`Start SurfCraft.command`, or run `./gradlew runClient`. It starts Minecraft with the mod in an offline dev
-profile (its files stay in `run/`).
-
 **In the official launcher.**
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/) 0.19.5 or newer for Minecraft 26.3.
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 or newer and `surfcraft-<version>.jar`
-   (from `./gradlew build`, in `build/libs/`) in your `mods` folder.
+2. Download `surfcraft-<version>.jar` from [Releases](https://github.com/a-funk/SurfCraft/releases/latest) and put
+   it in your `mods` folder with [Fabric API](https://modrinth.com/mod/fabric-api) 0.161.0+26.3 or newer.
 3. A server needs the same two jars in its `mods` folder; players need the mod to join.
+
+To uninstall, remove the jar. If something goes wrong, the game log is `logs/latest.log` in your Minecraft folder:
+attach it to an [issue](https://github.com/a-funk/SurfCraft/issues).
+
+**Build from source.** With JDK 25, `./gradlew build` writes the jar to `build/libs/` (and runs the tests), and
+`./gradlew runClient` starts Minecraft with the mod in an offline dev profile, no launcher needed (its files stay
+in `run/`). On a Mac, double-clicking `Start SurfCraft.command` does the same (Java 25: `brew install openjdk@25`).
 
 ## Recipes
 | Item | Recipe |
