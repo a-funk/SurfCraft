@@ -45,6 +45,13 @@ orchestrator with `tools/devlog.py deploy`). Look at a screenshot before adding 
 `.tools/` (gitignored): `.tools/venv/bin/um` (universal-modder CLI); set `MPLCONFIGDIR=$PWD/.tools/mpl` for
 matplotlib. Keep every file inside this folder, never in `~/`.
 
+## Publishing
+- Public repo: https://github.com/a-funk/SurfCraft (MIT; Valve's Source 1 SDK License acknowledged for the
+  SDK-derived movement files, see THIRD_PARTY_NOTICES.md). `git push` updates it and the private mirror
+  a-funk/surfcraft-backup (origin has both push URLs). Commits use the repo-local GitHub noreply identity.
+- Releases: build the jar from a clean clone, run `./gradlew jar --rerun-tasks`, check the gates in MODLOG
+  (Release 0.1.0), then `gh release create` with the jar and `tools/release-notices.sh` output.
+
 ## Rules
 - Physics fidelity is the top priority. The author's surf repo (private) and its CS:S
   recordings are the reference; do not loosen tolerances to make a regression pass.
