@@ -252,3 +252,13 @@ The user chose to publish everything openly and free: public source repo (`a-fun
 with Valve's Source 1 SDK License acknowledged for any SDK-derived movement code (its text and notices ship in
 `LICENSES/` and the jar; SurfCraft stays free of charge as that license requires). Minecraft screenshots in
 `devlog/` remain Mojang's content. Public commits use the GitHub noreply address, not a personal email.
+
+## Release 0.1.0 (2026-10-02)
+- Jar built from a clean clone of the published history, then `./gradlew jar --rerun-tasks` (Loom omits the
+  `Fabric-Loom-Client-Only-Entries` manifest attribute on a tree's first build). SHA-256 `dae3aa0653e4eef176a1f9e8f8cc356e77a4f1e548e3880658d02a6fb3fcf177`.
+  Gates: `"license": "MIT"`, META-INF/LICENSE, the Valve texts byte-identical to upstream, no test classes.
+- Production boot: that jar with Fabric API 0.161.0+26.3 on a standalone Fabric 26.3 server (fabric-server-launch,
+  loader 0.19.5): 43 mods loaded, "SurfCraft loaded", "Done (1.615s)", 0 ERROR lines.
+- History: every commit's identity rewritten to the GitHub noreply address (git filter-repo mailmap + text
+  replacement); the Wave C review probes (disassembly-derived scratch code) are kept privately, not published, and
+  binary addresses are omitted from the docs. A bundle of the pre-rewrite history is in the gitignored .tools/tmp/.

@@ -15,7 +15,7 @@ What's in it:
 Recipes, controls and surfing tips are in the [README](https://github.com/a-funk/SurfCraft#readme), changes in [CHANGELOG.md](https://github.com/a-funk/SurfCraft/blob/v0.1.0/CHANGELOG.md). Tested in survival, in single player and on an in-process dedicated server over a local connection (up to 2200 u/s, no server corrections; real-network latency untested). The movement replays 23 recordings from a real CS:S server to within 0.007 units.
 
 SHA-256
-- surfcraft-0.1.0.jar `JAR_SHA256`
+- surfcraft-0.1.0.jar `dae3aa0653e4eef176a1f9e8f8cc356e77a4f1e548e3880658d02a6fb3fcf177`
 
 Free and open source under the MIT License, except the routines derived from Valve's Source SDK 2013 game movement (SourceMovement, SourceMove, TickDriver's CheckStuck), which are redistributed free of charge under Valve's Source 1 SDK License. All license texts and notices are in NOTICES.txt (and inside the jar).
 
