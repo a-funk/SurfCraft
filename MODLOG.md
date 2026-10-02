@@ -244,3 +244,9 @@ in survival with fall damage on, through real keyboard and mouse input only:
   0 server corrections, no "moved wrongly/too quickly", the controller driving every tick.
 - No mod bugs; an offline simulator on the mod's own physics predicted the in-game run (680 u/s, 212 vs 213 ticks).
 - Records a frame per tick: the 28.75 s clip and stills are dev log entries 34-37.
+
+## Publishing decision (2026-10-02)
+The user chose to publish everything openly and free: public source repo (`a-funk/SurfCraft`), **MIT License**,
+with Valve's Source 1 SDK License acknowledged for any SDK-derived movement code (its text and notices ship in
+`LICENSES/` and the jar; SurfCraft stays free of charge as that license requires). Minecraft screenshots in
+`devlog/` remain Mojang's content. Public commits use the GitHub noreply address, not a personal email.

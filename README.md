@@ -75,10 +75,11 @@ profile (its files stay in `run/`).
 - `./gradlew build` runs the JUnit and server game tests; `./gradlew runClientGameTest` runs the in-game tests
   (they open a window). Details, decisions and gotchas: `MODLOG.md`, `docs/dev/`, `AGENTS.md`.
 
-## Licensing
-All rights reserved for now. The movement code follows the Source SDK's movement structure (via the author's
-browser surf project) and was checked against a CS:S server; like that project, public release of the code is gated
-on a provenance review. See `THIRD_PARTY_NOTICES.md` and `LICENSES/`.
+## License
+Free and open source under the [MIT License](LICENSE). Valve's Source 1 SDK License is acknowledged for any part of
+the movement code that is a modification of the Source SDK: its text and notices are in `LICENSES/` and in the jar,
+and SurfCraft stays free of charge as that license requires. Details: `THIRD_PARTY_NOTICES.md`. Not affiliated
+with Valve, Mojang or Microsoft.
 
 ## Credits
 Built with Claude Code (Claude Opus 5.5) using the [universal-modder](https://github.com/rehan-remade/universal-modder)

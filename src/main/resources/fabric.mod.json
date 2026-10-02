@@ -7,9 +7,11 @@
 	"authors": [
 		"Alex Funk"
 	],
-	"license": "All-Rights-Reserved",
+	"license": "MIT",
 	"contact": {
-		"homepage": "https://devlog-production-6292.up.railway.app"
+		"homepage": "https://devlog-production-6292.up.railway.app",
+		"sources": "https://github.com/a-funk/SurfCraft",
+		"issues": "https://github.com/a-funk/SurfCraft/issues"
 	},
 	"icon": "assets/surfcraft/icon.png",
 	"environment": "*",

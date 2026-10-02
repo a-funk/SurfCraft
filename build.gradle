@@ -75,7 +75,8 @@ test {
 }
 
 jar {
-	// Provenance notices and the license texts they refer to travel with the mod.
+	// The MIT license, the acknowledgements and Valve's license texts travel with the mod.
+	from("LICENSE") { into "META-INF" }
 	from("THIRD_PARTY_NOTICES.md") { into "META-INF" }
 	from("LICENSES") { into "META-INF/licenses" }
 }

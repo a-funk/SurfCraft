@@ -1,8 +1,8 @@
 # License texts
 
-Copied verbatim from the surf project (`LICENSES/` there, retrieved from Valve on 2026-09-23). They describe the
-named upstream material; placing them here does not license SurfCraft, grant rights to game assets, or settle
-whether SDK-informed routines may be redistributed (see `THIRD_PARTY_NOTICES.md`).
+SurfCraft itself is MIT (`../LICENSE`). These files are Valve's Source 1 SDK License and its companion notices,
+included verbatim (copied from the author's surf project, retrieved from Valve on 2026-09-23) to acknowledge Valve's
+terms for any part of SurfCraft's movement code that is a modification of the SDK (see `../THIRD_PARTY_NOTICES.md`).
 
 | File | Source |
 | --- | --- |
