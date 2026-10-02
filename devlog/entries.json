@@ -221,5 +221,11 @@
   "title": "Third person on ramp 2 at 660 u/s",
   "caption": "Run 2 after the gap's air strafe (A + mouse left, then D + mouse right): landed on the free-placed ramp 2 and gaining, full health, no server correction.",
   "at": "2026-10-01 08:12"
+ },
+ {
+  "file": "shots/38-published-free-and-open-source.jpg",
+  "title": "Published: free and open source",
+  "caption": "SurfCraft 0.1.0 is public at github.com/a-funk/SurfCraft under the MIT License (Valve's Source 1 SDK License acknowledged for the SDK-derived movement code), with the jar on the release page.",
+  "at": "2026-10-02 12:37"
  }
 ]
